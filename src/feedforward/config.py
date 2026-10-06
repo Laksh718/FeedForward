@@ -43,6 +43,16 @@ N_FOLDS, FOLD_DAYS = 4, 28   # rolling origin evaluation
 SEQ_LOOKBACK = 21            # days of history in each sequence window
 DISH_TEXT_DIM = 8    # size of the TF-IDF + SVD dish text embedding
 
+# Conditional VAE settings.
+VAE_LATENT, VAE_HIDDEN, VAE_EMB, VAE_DROPOUT = 8, 128, 8, 0.1
+VAE_LR, VAE_WEIGHT_DECAY, VAE_BATCH = 1e-3, 1e-5, 256
+VAE_EPOCHS, VAE_ANNEAL_EPOCHS, VAE_PATIENCE = 200, 20, 15
+VAE_FREE_BITS = 0.2         # nats per latent dimension that cost nothing (guards against posterior collapse)
+N_SAMPLES = 500
+EXTRA_DATA_WEIGHT = 0.5     # weight of synthetic rows from the GAN (teammate)
+RECOMMEND_QUANTILE = 0.75   # cook the P75 by default
+COVERAGE_TARGET = 0.80      # the P10 to P90 band should contain about 80 percent of outcomes
+
 # Domain constants.
 MEAL_SLOTS = ("breakfast", "lunch", "snacks", "dinner")
 USUAL_PLAN_BUFFER = 0.12  # manager rule: recent average plus 12 percent

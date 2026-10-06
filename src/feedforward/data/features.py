@@ -23,6 +23,12 @@ PHASE_MAP = {
     "theory_exam_period": "theory", "study_gap": "study_gap", "semester_break": "away",
     "summer_semester": "away", "enrolment": "enrolment", "orientation": "enrolment",
 }
+# Weather type (the admin dropdown) to rain level, from how the dataset maps condition text.
+WEATHER_TYPE_RAIN_LEVEL = {
+    "Mist": 0, "Haze": 0, "Fair": 0, "Partly Cloudy": 0, "Fog": 0, "Smoke": 0, "Dry": 0,
+    "Showers in the Vicinity": 1, "Drizzle": 1, "Light Drizzle": 1, "Light Rain": 1,
+    "Rain": 2, "Thunder": 2, "Light Rain with Thunder": 2, "Heavy Rain": 3,
+}
 CONFIDENCE_RANK = {"official": 0, "probable": 1, "estimated": 2}
 CALENDAR_COLS = ["date", "tn_public_holiday", "major_festival", "special_declared_holiday",
                  "compensatory_working_day", "rain_holiday_colleges", "senior_phase", "first_year_phase",

@@ -7,7 +7,7 @@ the final decision.
 **Data caveat:** the kitchen history is SIMULATED on a real menu, a real calendar and real weather.
 No real world savings are claimed. The February 2026 weather rows are unverified copies of March.
 
-## Folder tree (after M2)
+## Folder tree (after M3)
 
 ```
 FeedForward/
@@ -22,7 +22,10 @@ FeedForward/
       calendar_future.py                        future calendar and assumed weather
       feature_registry.py features.py text_features.py inventory_features.py
       splits.py timeseries.py                   splits, regimes, model datasets
-    models/ admin/ copilot/ plugins/   filled in later milestones
+    models/                        prep, attendance, baselines, cvae, bundle, train, evaluate, metrics, plots,
+                                   summary, forecast_service
+    plugins/                       surplus_detector_stub.py, gan_extra_data.py (teammates plug in here)
+    admin/ copilot/                filled in later milestones
   api/  app/                       backend and dashboard (M4, M5)
   data_store/                      calendar_future.csv, schemas/, admin_logs/ (git ignored)
   artifacts/                       processed, timeseries, nltk_data (git ignored)
@@ -49,6 +52,10 @@ python -m feedforward.data.calendar_future   # data_store/calendar_future.csv
 python -m feedforward.data.timeseries        # panel, windows, registry (run cleaning first)
 python -m feedforward.data.inventory_features
 python -m feedforward.data.nlp_report        # reports/nlp_normalisation_report.md
+python -m feedforward.models.train           # development model (early stopping on validation)
+python -m feedforward.models.evaluate        # metrics.json, metrics_summary.md, plots in reports/
+python -m feedforward.models.train --final   # deployment model on train + validation
+python -m feedforward.models.train --encoder gru   # optional GRU experiment
 python -m feedforward.export_code            # docs/code_bundle_preprocessing.md
 pytest
 ```
