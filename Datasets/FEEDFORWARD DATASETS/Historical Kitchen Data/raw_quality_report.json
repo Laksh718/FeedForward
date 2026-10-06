@@ -1,0 +1,7 @@
+{
+  "missing_attendance_and_present": 62,
+  "missing_leftover_qty": 31,
+  "dish_name_casing_or_spaces": 47,
+  "impossible_negative_leftover": 7,
+  "duplicate_rows": 15
+}

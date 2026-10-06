@@ -1,0 +1,10 @@
+.venv/
+.env
+artifacts/
+data_store/admin_logs/*
+!data_store/admin_logs/.gitkeep
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

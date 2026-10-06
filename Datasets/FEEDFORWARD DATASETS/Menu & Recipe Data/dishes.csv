@@ -1,0 +1,152 @@
+dish_id,dish_name,category,diet,forecast_priority,portion_g,popularity_score
+D001,Butter Milk,beverage,veg,support,120,0.74
+D002,Coffee,beverage,veg,support,120,0.66
+D003,Herbal Kanji,beverage,veg,support,120,0.3
+D004,Juice,beverage,veg,support,120,0.7
+D005,Milk,beverage,veg,support,120,0.75
+D006,Tea,beverage,veg,support,120,0.74
+D007,Bread,bread_spread,veg,support,40,0.67
+D008,Butter,bread_spread,veg,support,40,0.57
+D009,Jam,bread_spread,veg,support,40,0.61
+D010,Chutney,chutney,veg,support,30,0.46
+D011,Coconut Chutney,chutney,veg,support,30,0.49
+D012,Idly Podi,chutney,veg,support,30,0.52
+D013,Kara Chutney,chutney,veg,support,30,0.46
+D014,Mint Chutney,chutney,veg,support,30,0.48
+D015,Special Chutney,chutney,veg,support,30,0.54
+D016,Chole Dal Fry,dal,veg,support,70,0.51
+D017,Dal Fry,dal,veg,support,70,0.47
+D018,Dal Lasooni,dal,veg,support,70,0.51
+D019,Dal Tadka,dal,veg,support,70,0.54
+D020,Hara Moong Dal Tadka,dal,veg,support,70,0.44
+D021,Jeera Dal,dal,veg,support,70,0.54
+D022,Moongdal Tadka,dal,veg,support,70,0.52
+D023,Mysore Dal Fry,dal,veg,support,70,0.48
+D024,Punjabi Dal Tadka,dal,veg,support,70,0.46
+D025,Tomato Dal,dal,veg,support,70,0.55
+D026,Vegetable Dal,dal,veg,support,70,0.48
+D027,Bread Halwa,dessert,veg,core,80,0.7
+D028,Brownie,dessert,veg,core,80,0.9
+D029,Cake,dessert,veg,core,80,0.85
+D030,Dry Jamun,dessert,veg,core,80,0.88
+D031,Ice Cream,dessert,veg,core,80,0.97
+D032,Millet Sweet,dessert,veg,core,80,0.4
+D033,Muffin,dessert,veg,core,80,0.82
+D034,Payasam,dessert,veg,core,80,0.85
+D035,Sweet,dessert,veg,core,80,0.81
+D036,Aloo Capsicum,dry_sabji,veg,support,60,0.39
+D037,Arbi Roast,dry_sabji,veg,support,60,0.42
+D038,Aviyal,dry_sabji,veg,support,60,0.4
+D039,Beetroot Poriyal,dry_sabji,veg,support,60,0.3
+D040,Bindi Topiaza,dry_sabji,veg,support,60,0.39
+D041,Cabbage Sabji,dry_sabji,veg,support,60,0.4
+D042,Cabbage Toran,dry_sabji,veg,support,60,0.3
+D043,Crispy Vegetable,dry_sabji,veg,support,60,0.8
+D044,French Fry,dry_sabji,veg,support,60,0.92
+D045,Gobi 65,dry_sabji,veg,support,60,0.9
+D046,Keerai Masiyal,dry_sabji,veg,support,60,0.35
+D047,Mix Veg Poriyal,dry_sabji,veg,support,60,0.33
+D048,Poriyal,dry_sabji,veg,support,60,0.35
+D049,Raw Banana Chops,dry_sabji,veg,support,60,0.4
+D050,Boiled Egg,egg,egg,core,55,0.85
+D051,Bread Omelet,egg,egg,core,55,0.85
+D052,Masala Omelet,egg,egg,core,55,0.9
+D053,Chappathi,flatbread,veg,core,80,0.75
+D054,Chole Bhatura,flatbread,veg,core,80,0.9
+D055,Ghee Chappathi,flatbread,veg,core,80,0.8
+D056,Luchi,flatbread,veg,core,80,0.8
+D057,Malabar Paratha,flatbread,veg,core,80,0.88
+D058,Panjabi Paratha,flatbread,veg,core,80,0.81
+D059,Poori,flatbread,veg,core,80,0.85
+D060,Variety Stuffing Paratha,flatbread,veg,core,80,0.77
+D061,Veechu Paratha,flatbread,veg,core,80,0.88
+D062,Banana,fruit,veg,support,100,0.62
+D063,Special Fruit,fruit,veg,support,100,0.61
+D064,Chicken Gravy,nonveg_gravy,nonveg,core,110,0.95
+D065,Chicken Masala,nonveg_gravy,nonveg,core,110,0.93
+D066,Chilli Chicken,nonveg_gravy,nonveg,core,110,0.95
+D067,Fish Gravy,nonveg_gravy,nonveg,core,110,0.72
+D068,Kadai Chicken,nonveg_gravy,nonveg,core,110,0.93
+D069,Mutton Gravy,nonveg_gravy,nonveg,core,110,0.92
+D070,Pepper Chicken,nonveg_gravy,nonveg,core,110,0.93
+D071,Garlic Rasam,rasam,veg,support,70,0.47
+D072,Jeera Rasam,rasam,veg,support,70,0.55
+D073,Pepper Rasam,rasam,veg,support,70,0.55
+D074,Rasam,rasam,veg,support,70,0.48
+D075,Tomato Rasam,rasam,veg,support,70,0.52
+D076,Bahara Pulao,rice_main,veg,core,200,0.77
+D077,Bisebelabath,rice_main,veg,core,200,0.6
+D078,Chicken Briyani,rice_main,nonveg,core,200,0.98
+D079,Curd Rice,rice_main,veg,core,200,0.65
+D080,Fried Rice,rice_main,veg,core,200,0.9
+D081,Ghee Pulao,rice_main,veg,core,200,0.79
+D082,Jeera Pulav,rice_main,veg,core,200,0.75
+D083,Kaju Pulao,rice_main,veg,core,200,0.79
+D084,Mint Pulao,rice_main,veg,core,200,0.83
+D085,Noodles,rice_main,veg,core,200,0.9
+D086,Paneer Briyani,rice_main,veg,core,200,0.9
+D087,Pasta,rice_main,veg,core,200,0.85
+D088,Tomato Pulao,rice_main,veg,core,200,0.78
+D089,Variety Rice,rice_main,veg,core,200,0.65
+D090,Veg Briyani,rice_main,veg,core,200,0.9
+D091,Veg Pulao,rice_main,veg,core,200,0.73
+D092,Chilli Sambar,sambar_kuzhambu,veg,support,70,0.57
+D093,Drumstick Brinjal Sambar,sambar_kuzhambu,veg,support,70,0.59
+D094,Kathamba Sambar,sambar_kuzhambu,veg,support,70,0.54
+D095,Masala Sambar,sambar_kuzhambu,veg,support,70,0.5
+D096,Mor Kuzhambu,sambar_kuzhambu,veg,support,70,0.54
+D097,Parupu Urundai Kuzhambu,sambar_kuzhambu,veg,support,70,0.61
+D098,Sambar,sambar_kuzhambu,veg,support,70,0.55
+D099,Tiffen Sambar,sambar_kuzhambu,veg,support,70,0.61
+D100,Udupi Sambar,sambar_kuzhambu,veg,support,70,0.59
+D101,Veg Kosthu,sambar_kuzhambu,veg,support,70,0.49
+D102,Curd,side,veg,support,25,0.53
+D103,Fryums,side,veg,support,25,0.52
+D104,Mix Raitha,side,veg,support,25,0.5
+D105,Pickle,side,veg,support,25,0.47
+D106,Potato Chips,side,veg,support,25,0.52
+D107,Veg Salad,side,veg,support,25,0.45
+D108,Bajji,snack,veg,core,90,0.75
+D109,Black Channa Sundal,snack,veg,core,90,0.5
+D110,Bonda,snack,veg,core,90,0.8
+D111,Corn,snack,veg,core,90,0.65
+D112,Keera Vada,snack,veg,core,90,0.6
+D113,Masala Peanut,snack,veg,core,90,0.8
+D114,Mixture,snack,veg,core,90,0.7
+D115,Pani Poori,snack,veg,core,90,0.92
+D116,Pav Bajji,snack,veg,core,90,0.88
+D117,Sweet Bun,snack,veg,core,90,0.75
+D118,Vadai,snack,veg,core,90,0.82
+D119,Veg Puff,snack,veg,core,90,0.82
+D120,Steamed Rice,steamed_rice,veg,core,200,0.71
+D121,Chole Poori,tiffin,veg,core,160,0.65
+D122,Ghee Pongal,tiffin,veg,core,160,0.62
+D123,Idly,tiffin,veg,core,160,0.75
+D124,Millet Dosa,tiffin,veg,core,160,0.55
+D125,Podi Uthappam,tiffin,veg,core,160,0.56
+D126,Poha,tiffin,veg,core,160,0.45
+D127,Rava Pongal,tiffin,veg,core,160,0.56
+D128,Samba Rava Upma,tiffin,veg,core,160,0.4
+D129,Semiya Kichadi,tiffin,veg,core,160,0.67
+D130,Veg Idly,tiffin,veg,core,160,0.66
+D131,Veg Upma,tiffin,veg,core,160,0.4
+D132,Aloo Gobi Peanut Masala,veg_curry,veg,core,90,0.55
+D133,Aloo Meal Maker Kasa,veg_curry,veg,core,90,0.65
+D134,Aloo Palak,veg_curry,veg,core,90,0.65
+D135,Aloo Rajma Masala,veg_curry,veg,core,90,0.55
+D136,Aloo Tindli,veg_curry,veg,core,90,0.6
+D137,Channa Paneer Kuruma,veg_curry,veg,core,90,0.55
+D138,Chole Aloo Masala,veg_curry,veg,core,90,0.63
+D139,Dal Aloo Masala,veg_curry,veg,core,90,0.63
+D140,Gobi Mattar Masala,veg_curry,veg,core,90,0.56
+D141,Kadai Paneer,veg_curry,veg,core,90,0.6
+D142,Kadai Vegetable,veg_curry,veg,core,90,0.61
+D143,Kashmiri Dum Aloo,veg_curry,veg,core,90,0.57
+D144,Manchurian Gravy,veg_curry,veg,core,90,0.88
+D145,Mix Veg Kuruma,veg_curry,veg,core,90,0.59
+D146,Mix Veg Sabji,veg_curry,veg,core,90,0.57
+D147,Paneer Butter Masala,veg_curry,veg,core,90,0.9
+D148,Potato Masala,veg_curry,veg,core,90,0.63
+D149,Rajma Paneer Makhanwala,veg_curry,veg,core,90,0.56
+D150,Soya Kasa,veg_curry,veg,core,90,0.58
+D151,White Peas Masala,veg_curry,veg,core,90,0.66

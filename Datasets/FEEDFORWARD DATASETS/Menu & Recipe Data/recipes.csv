@@ -1,0 +1,624 @@
+dish_id,dish_name,ingredient,qty_g_per_portion
+D001,Butter Milk,curd,40
+D002,Coffee,milk,80
+D002,Coffee,sugar,8
+D002,Coffee,coffee_powder,3
+D003,Herbal Kanji,rice,20
+D003,Herbal Kanji,herbs,5
+D004,Juice,fruit_pulp,60
+D004,Juice,sugar,10
+D005,Milk,milk,200
+D006,Tea,milk,60
+D006,Tea,sugar,8
+D006,Tea,tea_powder,2
+D007,Bread,bread,60
+D008,Butter,butter,10
+D009,Jam,jam,15
+D010,Chutney,coconut,20
+D010,Chutney,chana_dal,5
+D010,Chutney,spices,2
+D011,Coconut Chutney,coconut,20
+D011,Coconut Chutney,chana_dal,5
+D011,Coconut Chutney,spices,2
+D012,Idly Podi,urad_dal,5
+D012,Idly Podi,spices,8
+D012,Idly Podi,oil,5
+D013,Kara Chutney,onion,20
+D013,Kara Chutney,tomato,20
+D013,Kara Chutney,spices,5
+D014,Mint Chutney,mint,10
+D014,Mint Chutney,coconut,10
+D014,Mint Chutney,spices,2
+D015,Special Chutney,coconut,20
+D015,Special Chutney,tomato,10
+D015,Special Chutney,spices,2
+D016,Chole Dal Fry,chana_dal,30
+D016,Chole Dal Fry,onion,12
+D016,Chole Dal Fry,tomato,15
+D016,Chole Dal Fry,oil,5
+D016,Chole Dal Fry,spices,3
+D017,Dal Fry,toor_dal,30
+D017,Dal Fry,onion,12
+D017,Dal Fry,tomato,15
+D017,Dal Fry,oil,5
+D017,Dal Fry,spices,3
+D018,Dal Lasooni,toor_dal,30
+D018,Dal Lasooni,onion,12
+D018,Dal Lasooni,tomato,15
+D018,Dal Lasooni,oil,5
+D018,Dal Lasooni,spices,3
+D019,Dal Tadka,toor_dal,30
+D019,Dal Tadka,onion,12
+D019,Dal Tadka,tomato,15
+D019,Dal Tadka,oil,5
+D019,Dal Tadka,spices,3
+D020,Hara Moong Dal Tadka,moong_dal,30
+D020,Hara Moong Dal Tadka,onion,12
+D020,Hara Moong Dal Tadka,tomato,15
+D020,Hara Moong Dal Tadka,oil,5
+D020,Hara Moong Dal Tadka,spices,3
+D021,Jeera Dal,toor_dal,30
+D021,Jeera Dal,onion,12
+D021,Jeera Dal,tomato,15
+D021,Jeera Dal,oil,5
+D021,Jeera Dal,spices,3
+D022,Moongdal Tadka,moong_dal,30
+D022,Moongdal Tadka,onion,12
+D022,Moongdal Tadka,tomato,15
+D022,Moongdal Tadka,oil,5
+D022,Moongdal Tadka,spices,3
+D023,Mysore Dal Fry,toor_dal,30
+D023,Mysore Dal Fry,onion,12
+D023,Mysore Dal Fry,tomato,15
+D023,Mysore Dal Fry,oil,5
+D023,Mysore Dal Fry,spices,3
+D024,Punjabi Dal Tadka,toor_dal,30
+D024,Punjabi Dal Tadka,onion,12
+D024,Punjabi Dal Tadka,tomato,15
+D024,Punjabi Dal Tadka,oil,5
+D024,Punjabi Dal Tadka,spices,3
+D025,Tomato Dal,toor_dal,30
+D025,Tomato Dal,tomato,40
+D025,Tomato Dal,oil,5
+D025,Tomato Dal,spices,3
+D026,Vegetable Dal,toor_dal,30
+D026,Vegetable Dal,onion,12
+D026,Vegetable Dal,tomato,15
+D026,Vegetable Dal,oil,5
+D026,Vegetable Dal,spices,3
+D027,Bread Halwa,bread,50
+D027,Bread Halwa,sugar,30
+D027,Bread Halwa,ghee,15
+D028,Brownie,maida,30
+D028,Brownie,sugar,30
+D028,Brownie,cocoa,8
+D028,Brownie,butter,15
+D029,Cake,maida,40
+D029,Cake,sugar,30
+D029,Cake,butter,15
+D030,Dry Jamun,milk_powder,40
+D030,Dry Jamun,sugar,40
+D030,Dry Jamun,oil,15
+D031,Ice Cream,ice_cream,60
+D032,Millet Sweet,millet,40
+D032,Millet Sweet,jaggery,30
+D032,Millet Sweet,ghee,8
+D033,Muffin,maida,40
+D033,Muffin,sugar,25
+D033,Muffin,butter,15
+D034,Payasam,milk,120
+D034,Payasam,sugar,25
+D034,Payasam,vermicelli,12
+D034,Payasam,ghee,3
+D034,Payasam,cashew,5
+D035,Sweet,sugar,30
+D035,Sweet,wheat_flour,30
+D035,Sweet,ghee,15
+D036,Aloo Capsicum,capsicum,50
+D036,Aloo Capsicum,potato,60
+D036,Aloo Capsicum,oil,8
+D036,Aloo Capsicum,spices,3
+D037,Arbi Roast,colocasia,100
+D037,Arbi Roast,oil,10
+D037,Arbi Roast,spices,3
+D038,Aviyal,mixed_vegetables,100
+D038,Aviyal,coconut,15
+D038,Aviyal,curd,15
+D038,Aviyal,spices,3
+D039,Beetroot Poriyal,beetroot,100
+D039,Beetroot Poriyal,oil,6
+D039,Beetroot Poriyal,coconut,6
+D039,Beetroot Poriyal,spices,2
+D040,Bindi Topiaza,okra,100
+D040,Bindi Topiaza,onion,30
+D040,Bindi Topiaza,oil,8
+D040,Bindi Topiaza,spices,3
+D041,Cabbage Sabji,cabbage,100
+D041,Cabbage Sabji,oil,6
+D041,Cabbage Sabji,coconut,6
+D041,Cabbage Sabji,spices,2
+D042,Cabbage Toran,cabbage,100
+D042,Cabbage Toran,oil,6
+D042,Cabbage Toran,coconut,6
+D042,Cabbage Toran,spices,2
+D043,Crispy Vegetable,mixed_vegetables,100
+D043,Crispy Vegetable,cornflour,20
+D043,Crispy Vegetable,oil,25
+D043,Crispy Vegetable,spices,3
+D044,French Fry,potato,120
+D044,French Fry,oil,25
+D045,Gobi 65,cauliflower,100
+D045,Gobi 65,cornflour,20
+D045,Gobi 65,oil,25
+D045,Gobi 65,spices,4
+D046,Keerai Masiyal,spinach,100
+D046,Keerai Masiyal,oil,5
+D046,Keerai Masiyal,spices,2
+D047,Mix Veg Poriyal,mixed_vegetables,100
+D047,Mix Veg Poriyal,oil,7
+D047,Mix Veg Poriyal,coconut,6
+D047,Mix Veg Poriyal,spices,3
+D048,Poriyal,mixed_vegetables,100
+D048,Poriyal,oil,7
+D048,Poriyal,coconut,6
+D048,Poriyal,spices,3
+D049,Raw Banana Chops,raw_banana,90
+D049,Raw Banana Chops,besan,15
+D049,Raw Banana Chops,oil,15
+D049,Raw Banana Chops,spices,3
+D050,Boiled Egg,egg,50
+D051,Bread Omelet,egg,50
+D051,Bread Omelet,bread,30
+D051,Bread Omelet,onion,10
+D051,Bread Omelet,oil,5
+D052,Masala Omelet,egg,50
+D052,Masala Omelet,onion,10
+D052,Masala Omelet,oil,5
+D053,Chappathi,wheat_flour,60
+D053,Chappathi,oil,5
+D054,Chole Bhatura,maida,100
+D054,Chole Bhatura,curd,15
+D054,Chole Bhatura,oil,30
+D054,Chole Bhatura,chickpeas,40
+D054,Chole Bhatura,onion,20
+D054,Chole Bhatura,tomato,20
+D054,Chole Bhatura,spices,4
+D055,Ghee Chappathi,wheat_flour,60
+D055,Ghee Chappathi,ghee,8
+D055,Ghee Chappathi,oil,3
+D056,Luchi,maida,70
+D056,Luchi,oil,25
+D057,Malabar Paratha,wheat_flour,90
+D057,Malabar Paratha,oil,12
+D057,Malabar Paratha,mixed_vegetables,20
+D058,Panjabi Paratha,wheat_flour,90
+D058,Panjabi Paratha,oil,12
+D058,Panjabi Paratha,mixed_vegetables,20
+D059,Poori,wheat_flour,70
+D059,Poori,oil,25
+D060,Variety Stuffing Paratha,wheat_flour,90
+D060,Variety Stuffing Paratha,oil,12
+D060,Variety Stuffing Paratha,mixed_vegetables,30
+D060,Variety Stuffing Paratha,paneer,15
+D060,Variety Stuffing Paratha,spices,3
+D061,Veechu Paratha,wheat_flour,90
+D061,Veechu Paratha,oil,12
+D061,Veechu Paratha,mixed_vegetables,20
+D062,Banana,banana,100
+D063,Special Fruit,seasonal_fruit,100
+D064,Chicken Gravy,chicken,100
+D064,Chicken Gravy,onion,30
+D064,Chicken Gravy,tomato,30
+D064,Chicken Gravy,oil,12
+D064,Chicken Gravy,spices,5
+D065,Chicken Masala,chicken,100
+D065,Chicken Masala,onion,30
+D065,Chicken Masala,tomato,30
+D065,Chicken Masala,oil,12
+D065,Chicken Masala,spices,5
+D066,Chilli Chicken,chicken,100
+D066,Chilli Chicken,onion,30
+D066,Chilli Chicken,tomato,30
+D066,Chilli Chicken,oil,20
+D066,Chilli Chicken,spices,5
+D066,Chilli Chicken,cornflour,10
+D066,Chilli Chicken,capsicum,20
+D067,Fish Gravy,fish,100
+D067,Fish Gravy,onion,25
+D067,Fish Gravy,tomato,25
+D067,Fish Gravy,tamarind,5
+D067,Fish Gravy,oil,12
+D067,Fish Gravy,spices,5
+D068,Kadai Chicken,chicken,100
+D068,Kadai Chicken,onion,30
+D068,Kadai Chicken,tomato,30
+D068,Kadai Chicken,oil,12
+D068,Kadai Chicken,spices,5
+D069,Mutton Gravy,mutton,90
+D069,Mutton Gravy,onion,30
+D069,Mutton Gravy,tomato,30
+D069,Mutton Gravy,oil,12
+D069,Mutton Gravy,coconut,8
+D069,Mutton Gravy,spices,5
+D070,Pepper Chicken,chicken,100
+D070,Pepper Chicken,onion,30
+D070,Pepper Chicken,tomato,30
+D070,Pepper Chicken,oil,12
+D070,Pepper Chicken,spices,5
+D071,Garlic Rasam,tomato,25
+D071,Garlic Rasam,toor_dal,8
+D071,Garlic Rasam,tamarind,4
+D071,Garlic Rasam,spices,3
+D071,Garlic Rasam,garlic,5
+D072,Jeera Rasam,tomato,25
+D072,Jeera Rasam,toor_dal,8
+D072,Jeera Rasam,tamarind,4
+D072,Jeera Rasam,spices,3
+D073,Pepper Rasam,tomato,25
+D073,Pepper Rasam,toor_dal,8
+D073,Pepper Rasam,tamarind,4
+D073,Pepper Rasam,spices,3
+D073,Pepper Rasam,pepper,2
+D074,Rasam,tomato,25
+D074,Rasam,toor_dal,8
+D074,Rasam,tamarind,4
+D074,Rasam,spices,3
+D075,Tomato Rasam,tomato,25
+D075,Tomato Rasam,toor_dal,8
+D075,Tomato Rasam,tamarind,4
+D075,Tomato Rasam,spices,3
+D076,Bahara Pulao,rice,90
+D076,Bahara Pulao,oil,8
+D076,Bahara Pulao,onion,20
+D076,Bahara Pulao,spices,3
+D076,Bahara Pulao,mixed_vegetables,30
+D076,Bahara Pulao,ghee,6
+D077,Bisebelabath,rice,70
+D077,Bisebelabath,toor_dal,25
+D077,Bisebelabath,mixed_vegetables,50
+D077,Bisebelabath,tamarind,5
+D077,Bisebelabath,spices,5
+D077,Bisebelabath,ghee,6
+D078,Chicken Briyani,rice,100
+D078,Chicken Briyani,curd,15
+D078,Chicken Briyani,onion,30
+D078,Chicken Briyani,tomato,20
+D078,Chicken Briyani,spices,5
+D078,Chicken Briyani,ghee,8
+D078,Chicken Briyani,oil,8
+D078,Chicken Briyani,chicken,100
+D079,Curd Rice,rice,70
+D079,Curd Rice,curd,100
+D079,Curd Rice,oil,4
+D079,Curd Rice,spices,2
+D080,Fried Rice,rice,90
+D080,Fried Rice,mixed_vegetables,40
+D080,Fried Rice,oil,12
+D080,Fried Rice,soy_sauce,5
+D081,Ghee Pulao,rice,90
+D081,Ghee Pulao,oil,8
+D081,Ghee Pulao,onion,20
+D081,Ghee Pulao,spices,3
+D081,Ghee Pulao,mixed_vegetables,30
+D081,Ghee Pulao,ghee,6
+D082,Jeera Pulav,rice,90
+D082,Jeera Pulav,oil,8
+D082,Jeera Pulav,onion,20
+D082,Jeera Pulav,spices,3
+D082,Jeera Pulav,mixed_vegetables,30
+D082,Jeera Pulav,ghee,6
+D083,Kaju Pulao,rice,90
+D083,Kaju Pulao,oil,8
+D083,Kaju Pulao,onion,20
+D083,Kaju Pulao,spices,3
+D083,Kaju Pulao,mixed_vegetables,30
+D083,Kaju Pulao,ghee,6
+D083,Kaju Pulao,cashew,10
+D084,Mint Pulao,rice,90
+D084,Mint Pulao,oil,8
+D084,Mint Pulao,onion,20
+D084,Mint Pulao,spices,3
+D084,Mint Pulao,mixed_vegetables,30
+D084,Mint Pulao,ghee,6
+D084,Mint Pulao,mint,8
+D085,Noodles,noodles,80
+D085,Noodles,mixed_vegetables,40
+D085,Noodles,oil,12
+D085,Noodles,soy_sauce,5
+D086,Paneer Briyani,rice,100
+D086,Paneer Briyani,curd,15
+D086,Paneer Briyani,onion,30
+D086,Paneer Briyani,tomato,20
+D086,Paneer Briyani,spices,5
+D086,Paneer Briyani,ghee,8
+D086,Paneer Briyani,oil,8
+D086,Paneer Briyani,paneer,60
+D087,Pasta,pasta,80
+D087,Pasta,tomato,40
+D087,Pasta,mixed_vegetables,30
+D087,Pasta,oil,10
+D087,Pasta,spices,3
+D088,Tomato Pulao,rice,90
+D088,Tomato Pulao,oil,8
+D088,Tomato Pulao,onion,20
+D088,Tomato Pulao,spices,3
+D088,Tomato Pulao,mixed_vegetables,30
+D088,Tomato Pulao,ghee,6
+D088,Tomato Pulao,tomato,40
+D089,Variety Rice,rice,90
+D089,Variety Rice,oil,8
+D089,Variety Rice,onion,20
+D089,Variety Rice,spices,3
+D089,Variety Rice,tamarind,5
+D089,Variety Rice,peanuts,10
+D090,Veg Briyani,rice,100
+D090,Veg Briyani,curd,15
+D090,Veg Briyani,onion,30
+D090,Veg Briyani,tomato,20
+D090,Veg Briyani,spices,5
+D090,Veg Briyani,ghee,8
+D090,Veg Briyani,oil,8
+D090,Veg Briyani,mixed_vegetables,50
+D091,Veg Pulao,rice,90
+D091,Veg Pulao,oil,8
+D091,Veg Pulao,onion,20
+D091,Veg Pulao,spices,3
+D091,Veg Pulao,mixed_vegetables,30
+D091,Veg Pulao,ghee,6
+D092,Chilli Sambar,toor_dal,20
+D092,Chilli Sambar,mixed_vegetables,40
+D092,Chilli Sambar,tamarind,5
+D092,Chilli Sambar,spices,4
+D092,Chilli Sambar,oil,3
+D093,Drumstick Brinjal Sambar,toor_dal,20
+D093,Drumstick Brinjal Sambar,mixed_vegetables,40
+D093,Drumstick Brinjal Sambar,tamarind,5
+D093,Drumstick Brinjal Sambar,spices,4
+D093,Drumstick Brinjal Sambar,oil,3
+D094,Kathamba Sambar,toor_dal,20
+D094,Kathamba Sambar,mixed_vegetables,40
+D094,Kathamba Sambar,tamarind,5
+D094,Kathamba Sambar,spices,4
+D094,Kathamba Sambar,oil,3
+D095,Masala Sambar,toor_dal,20
+D095,Masala Sambar,mixed_vegetables,40
+D095,Masala Sambar,tamarind,5
+D095,Masala Sambar,spices,4
+D095,Masala Sambar,oil,3
+D096,Mor Kuzhambu,curd,80
+D096,Mor Kuzhambu,coconut,10
+D096,Mor Kuzhambu,spices,3
+D097,Parupu Urundai Kuzhambu,toor_dal,40
+D097,Parupu Urundai Kuzhambu,coconut,10
+D097,Parupu Urundai Kuzhambu,tamarind,8
+D097,Parupu Urundai Kuzhambu,spices,5
+D097,Parupu Urundai Kuzhambu,oil,5
+D098,Sambar,toor_dal,20
+D098,Sambar,mixed_vegetables,40
+D098,Sambar,tamarind,5
+D098,Sambar,spices,4
+D098,Sambar,oil,3
+D099,Tiffen Sambar,toor_dal,20
+D099,Tiffen Sambar,mixed_vegetables,40
+D099,Tiffen Sambar,tamarind,5
+D099,Tiffen Sambar,spices,4
+D099,Tiffen Sambar,oil,3
+D100,Udupi Sambar,toor_dal,20
+D100,Udupi Sambar,mixed_vegetables,40
+D100,Udupi Sambar,tamarind,5
+D100,Udupi Sambar,spices,4
+D100,Udupi Sambar,oil,3
+D101,Veg Kosthu,mixed_vegetables,60
+D101,Veg Kosthu,moong_dal,10
+D101,Veg Kosthu,tamarind,5
+D101,Veg Kosthu,coconut,8
+D101,Veg Kosthu,spices,4
+D102,Curd,curd,100
+D103,Fryums,fryums,15
+D103,Fryums,oil,5
+D104,Mix Raitha,curd,80
+D104,Mix Raitha,onion,10
+D104,Mix Raitha,cucumber,20
+D105,Pickle,pickle,10
+D106,Potato Chips,potato,60
+D106,Potato Chips,oil,15
+D107,Veg Salad,mixed_vegetables,60
+D108,Bajji,besan,30
+D108,Bajji,mixed_vegetables,50
+D108,Bajji,oil,20
+D109,Black Channa Sundal,black_chana,50
+D109,Black Channa Sundal,coconut,5
+D110,Bonda,potato,60
+D110,Bonda,besan,30
+D110,Bonda,oil,20
+D111,Corn,corn,100
+D111,Corn,butter,5
+D112,Keera Vada,spinach,40
+D112,Keera Vada,chana_dal,40
+D112,Keera Vada,oil,20
+D113,Masala Peanut,peanuts,50
+D113,Masala Peanut,onion,10
+D114,Mixture,mixture,30
+D115,Pani Poori,rava,30
+D115,Pani Poori,chickpeas,20
+D115,Pani Poori,potato,30
+D115,Pani Poori,spices,3
+D116,Pav Bajji,maida,60
+D116,Pav Bajji,mixed_vegetables,70
+D116,Pav Bajji,butter,8
+D116,Pav Bajji,oil,10
+D116,Pav Bajji,spices,4
+D117,Sweet Bun,maida,60
+D117,Sweet Bun,sugar,15
+D118,Vadai,urad_dal,40
+D118,Vadai,oil,20
+D119,Veg Puff,maida,45
+D119,Veg Puff,mixed_vegetables,40
+D119,Veg Puff,oil,15
+D120,Steamed Rice,rice,100
+D121,Chole Poori,wheat_flour,70
+D121,Chole Poori,oil,25
+D121,Chole Poori,chickpeas,50
+D121,Chole Poori,onion,20
+D121,Chole Poori,tomato,15
+D121,Chole Poori,spices,4
+D122,Ghee Pongal,rice,50
+D122,Ghee Pongal,moong_dal,20
+D122,Ghee Pongal,ghee,10
+D122,Ghee Pongal,pepper,1
+D123,Idly,rice,50
+D123,Idly,urad_dal,18
+D124,Millet Dosa,millet,60
+D124,Millet Dosa,urad_dal,12
+D124,Millet Dosa,oil,6
+D125,Podi Uthappam,rice,50
+D125,Podi Uthappam,urad_dal,15
+D125,Podi Uthappam,onion,20
+D125,Podi Uthappam,oil,6
+D126,Poha,poha_flakes,60
+D126,Poha,onion,20
+D126,Poha,oil,6
+D126,Poha,peanuts,8
+D127,Rava Pongal,rava,50
+D127,Rava Pongal,moong_dal,20
+D127,Rava Pongal,ghee,8
+D127,Rava Pongal,pepper,1
+D128,Samba Rava Upma,rava,70
+D128,Samba Rava Upma,onion,20
+D128,Samba Rava Upma,oil,8
+D128,Samba Rava Upma,mixed_vegetables,20
+D129,Semiya Kichadi,vermicelli,60
+D129,Semiya Kichadi,mixed_vegetables,40
+D129,Semiya Kichadi,oil,8
+D130,Veg Idly,rice,50
+D130,Veg Idly,urad_dal,18
+D130,Veg Idly,mixed_vegetables,25
+D131,Veg Upma,rava,70
+D131,Veg Upma,onion,20
+D131,Veg Upma,oil,8
+D131,Veg Upma,mixed_vegetables,20
+D132,Aloo Gobi Peanut Masala,mixed_vegetables,80
+D132,Aloo Gobi Peanut Masala,onion,30
+D132,Aloo Gobi Peanut Masala,tomato,30
+D132,Aloo Gobi Peanut Masala,oil,8
+D132,Aloo Gobi Peanut Masala,spices,4
+D132,Aloo Gobi Peanut Masala,potato,100
+D132,Aloo Gobi Peanut Masala,peanuts,15
+D133,Aloo Meal Maker Kasa,mixed_vegetables,80
+D133,Aloo Meal Maker Kasa,onion,30
+D133,Aloo Meal Maker Kasa,tomato,30
+D133,Aloo Meal Maker Kasa,oil,8
+D133,Aloo Meal Maker Kasa,spices,4
+D133,Aloo Meal Maker Kasa,potato,100
+D133,Aloo Meal Maker Kasa,soya_chunks,30
+D134,Aloo Palak,mixed_vegetables,80
+D134,Aloo Palak,onion,30
+D134,Aloo Palak,tomato,30
+D134,Aloo Palak,oil,8
+D134,Aloo Palak,spices,4
+D134,Aloo Palak,potato,100
+D134,Aloo Palak,spinach,80
+D135,Aloo Rajma Masala,mixed_vegetables,80
+D135,Aloo Rajma Masala,onion,30
+D135,Aloo Rajma Masala,tomato,30
+D135,Aloo Rajma Masala,oil,8
+D135,Aloo Rajma Masala,spices,4
+D135,Aloo Rajma Masala,potato,100
+D135,Aloo Rajma Masala,rajma,40
+D136,Aloo Tindli,mixed_vegetables,80
+D136,Aloo Tindli,onion,30
+D136,Aloo Tindli,tomato,30
+D136,Aloo Tindli,oil,8
+D136,Aloo Tindli,spices,4
+D136,Aloo Tindli,potato,100
+D137,Channa Paneer Kuruma,mixed_vegetables,30
+D137,Channa Paneer Kuruma,onion,30
+D137,Channa Paneer Kuruma,tomato,30
+D137,Channa Paneer Kuruma,oil,8
+D137,Channa Paneer Kuruma,spices,4
+D137,Channa Paneer Kuruma,paneer,50
+D137,Channa Paneer Kuruma,chickpeas,50
+D137,Channa Paneer Kuruma,coconut,15
+D138,Chole Aloo Masala,mixed_vegetables,80
+D138,Chole Aloo Masala,onion,30
+D138,Chole Aloo Masala,tomato,30
+D138,Chole Aloo Masala,oil,8
+D138,Chole Aloo Masala,spices,4
+D138,Chole Aloo Masala,potato,100
+D138,Chole Aloo Masala,chickpeas,50
+D139,Dal Aloo Masala,mixed_vegetables,80
+D139,Dal Aloo Masala,onion,30
+D139,Dal Aloo Masala,tomato,30
+D139,Dal Aloo Masala,oil,8
+D139,Dal Aloo Masala,spices,4
+D139,Dal Aloo Masala,potato,100
+D140,Gobi Mattar Masala,mixed_vegetables,80
+D140,Gobi Mattar Masala,onion,30
+D140,Gobi Mattar Masala,tomato,30
+D140,Gobi Mattar Masala,oil,8
+D140,Gobi Mattar Masala,spices,4
+D141,Kadai Paneer,mixed_vegetables,30
+D141,Kadai Paneer,onion,30
+D141,Kadai Paneer,tomato,30
+D141,Kadai Paneer,oil,8
+D141,Kadai Paneer,spices,4
+D141,Kadai Paneer,paneer,50
+D142,Kadai Vegetable,mixed_vegetables,80
+D142,Kadai Vegetable,onion,30
+D142,Kadai Vegetable,tomato,30
+D142,Kadai Vegetable,oil,8
+D142,Kadai Vegetable,spices,4
+D143,Kashmiri Dum Aloo,mixed_vegetables,80
+D143,Kashmiri Dum Aloo,onion,30
+D143,Kashmiri Dum Aloo,tomato,30
+D143,Kashmiri Dum Aloo,oil,8
+D143,Kashmiri Dum Aloo,spices,4
+D143,Kashmiri Dum Aloo,potato,100
+D144,Manchurian Gravy,mixed_vegetables,80
+D144,Manchurian Gravy,onion,30
+D144,Manchurian Gravy,tomato,30
+D144,Manchurian Gravy,oil,8
+D144,Manchurian Gravy,spices,4
+D145,Mix Veg Kuruma,mixed_vegetables,80
+D145,Mix Veg Kuruma,onion,30
+D145,Mix Veg Kuruma,tomato,30
+D145,Mix Veg Kuruma,oil,8
+D145,Mix Veg Kuruma,spices,4
+D145,Mix Veg Kuruma,coconut,15
+D146,Mix Veg Sabji,mixed_vegetables,80
+D146,Mix Veg Sabji,onion,30
+D146,Mix Veg Sabji,tomato,30
+D146,Mix Veg Sabji,oil,8
+D146,Mix Veg Sabji,spices,4
+D147,Paneer Butter Masala,mixed_vegetables,30
+D147,Paneer Butter Masala,onion,30
+D147,Paneer Butter Masala,tomato,30
+D147,Paneer Butter Masala,oil,8
+D147,Paneer Butter Masala,spices,4
+D147,Paneer Butter Masala,paneer,50
+D147,Paneer Butter Masala,butter,10
+D147,Paneer Butter Masala,cream,10
+D148,Potato Masala,mixed_vegetables,80
+D148,Potato Masala,onion,30
+D148,Potato Masala,tomato,30
+D148,Potato Masala,oil,8
+D148,Potato Masala,spices,4
+D149,Rajma Paneer Makhanwala,mixed_vegetables,30
+D149,Rajma Paneer Makhanwala,onion,30
+D149,Rajma Paneer Makhanwala,tomato,30
+D149,Rajma Paneer Makhanwala,oil,8
+D149,Rajma Paneer Makhanwala,spices,4
+D149,Rajma Paneer Makhanwala,paneer,50
+D149,Rajma Paneer Makhanwala,rajma,40
+D150,Soya Kasa,mixed_vegetables,80
+D150,Soya Kasa,onion,30
+D150,Soya Kasa,tomato,30
+D150,Soya Kasa,oil,8
+D150,Soya Kasa,spices,4
+D150,Soya Kasa,soya_chunks,30
+D151,White Peas Masala,mixed_vegetables,80
+D151,White Peas Masala,onion,30
+D151,White Peas Masala,tomato,30
+D151,White Peas Masala,oil,8
+D151,White Peas Masala,spices,4
+D151,White Peas Masala,white_peas,50
