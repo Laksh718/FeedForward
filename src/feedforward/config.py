@@ -35,6 +35,12 @@ TRAIN_END = "2026-06-17"
 VAL_START, VAL_END = "2026-06-18", "2026-08-11"
 TEST_START, TEST_END = "2026-08-12", "2026-10-05"
 
+# Text matching confidence (rapidfuzz score, 0 to 100).
+FUZZY_ACCEPT = 90.0   # accept silently
+FUZZY_REVIEW = 75.0   # accept but put on the review list
+
+DISH_TEXT_DIM = 8     # size of the TF-IDF + SVD dish text embedding
+
 # Domain constants.
 MEAL_SLOTS = ("breakfast", "lunch", "snacks", "dinner")
 USUAL_PLAN_BUFFER = 0.12  # manager rule: recent average plus 12 percent
