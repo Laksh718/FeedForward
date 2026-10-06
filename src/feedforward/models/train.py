@@ -28,6 +28,32 @@ def load_panel() -> pd.DataFrame:
     return pd.read_parquet(C.TIMESERIES_DIR / "panel.parquet")
 
 
+def load_panel_with_admin(real_weight: float) -> pd.DataFrame:
+    """Panel built from simulated history plus the real entries of the admin log (stage 9: feedback and continuous improvement).
+
+    Rows keep their data_source. Real rows get `real_weight` as sample weight so a few real days still count.
+    """
+    from feedforward.admin.history import admin_history_rows, load_combined_history, real_day_count
+    from feedforward.data.timeseries import build_panel
+
+    days = real_day_count()
+    _, skipped = admin_history_rows()
+    if days < C.MIN_REAL_DAYS:
+        print(f"WARNING: only {days} real days are logged; at least {C.MIN_REAL_DAYS} are recommended before the real data "
+              "can change the forecasts much. Training continues.")
+    if skipped:
+        print(f"Note: {skipped} real kitchen rows were skipped because their slot has no attendance number.")
+    hist = load_combined_history()
+    hist["demand_qty"] = hist["consumed_qty"] + hist["unmet_qty"]
+    panel = build_panel(hist, pd.read_parquet(C.PROCESSED_DIR / "dishes.parquet"), pd.read_parquet(C.PROCESSED_DIR / "weekly_menu.parquet"))
+    source = hist[["date", "meal_slot", "dish_id", "data_source"]]
+    panel = panel.merge(source, on=["date", "meal_slot", "dish_id"], how="left")
+    panel["sample_weight"] = (panel["data_source"] == "admin_real").map({True: real_weight, False: 1.0})
+    print(f"Training on {len(panel)} rows: {int((panel['data_source'] == 'admin_real').sum())} real (weight {real_weight}), "
+          f"{int((panel['data_source'] != 'admin_real').sum())} simulated, from {days} real days.")
+    return panel
+
+
 def load_windows() -> np.ndarray:
     """Sequence windows aligned row by row with the panel (used by the GRU experiment)."""
     return np.load(C.TIMESERIES_DIR / "windows.npz")["x_seq"]
@@ -125,9 +151,14 @@ def main() -> None:
     ap.add_argument("--include-test", action="store_true", help="with --final, also train on the test period")
     ap.add_argument("--extra-data", default=None, help="synthetic rows from the GAN (parquet or csv)")
     ap.add_argument("--epochs", type=int, default=None)
+    ap.add_argument("--include-admin", action="store_true", help="also learn from the real entries of the admin daily log")
+    ap.add_argument("--real-weight", type=float, default=C.REAL_ROW_WEIGHT, help="weight of real rows (simulated rows weigh 1)")
     args = ap.parse_args()
 
-    panel, cfg = load_panel(), CVAEConfig(encoder=args.encoder)
+    if args.include_admin and args.encoder == "gru":
+        ap.error("--include-admin works with the default MLP encoder only")
+    panel = load_panel_with_admin(args.real_weight) if args.include_admin else load_panel()
+    cfg = CVAEConfig(encoder=args.encoder)
     if args.epochs:
         cfg.max_epochs = args.epochs
     seq = load_windows() if args.encoder == "gru" else None

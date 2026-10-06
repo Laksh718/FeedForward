@@ -1,95 +1,145 @@
 # FeedForward: Predict. Prevent. Provide.
 
-Forecasts meal demand in a hostel mess as a range (P10, P50, P90) so the kitchen can cook the
-right amount, prevent overproduction and redistribute only genuine surplus. A human always makes
-the final decision.
+FeedForward forecasts meal demand in a hostel mess as a **range** (a low end, a most likely amount and a high end), not a single number.
+The kitchen can then cook the right amount, prevent overproduction and spoilage, and redistribute only genuine surplus.
+**A human always makes the final decision.** The copilot only explains the numbers; it never changes a quantity or approves a plan.
 
-**Data caveat:** the kitchen history is SIMULATED on a real menu, a real calendar and real weather.
-No real world savings are claimed. The February 2026 weather rows are unverified copies of March.
+This repository holds one team member's part: data preprocessing (NLP and tabular), cleaning, feature engineering, a conditional VAE
+demand forecaster, the dashboard and copilot, and the admin Daily log that feeds real data back into the forecasts.
 
-## Folder tree (after M6)
+**Data caveats (read these before quoting any number)**
+- The kitchen history is **simulated** on a **real** menu, a **real** calendar and **real** weather. No real world savings are claimed.
+- Recipes, portion sizes and popularity scores are estimates. Shelf lives in the inventory are assumed.
+- The weather rows for February 2026 are unverified copies of March (`weather_reliable = 0`). One day (2026-05-23) is a flagged temperature outlier.
+  Rainfall in millimetres is always 0 in the source and is not used.
+- 79 theory exam days are estimates (`phase_confidence = estimated`). Dates after 2026-10-05 come from `data_store/calendar_future.csv`
+  (probable or estimated), and future weather is last year's monthly average, always flagged as assumed.
+- One year of history: no season repeats, so every score is an estimate. The simulation itself is noisy, which puts a measured ceiling of
+  about 95 percent accuracy per dish. See `reports/metrics_summary.md`.
+
+## Folder tree
 
 ```
 FeedForward/
-  Datasets/FEEDFORWARD DATASETS/   read only input data
+  Datasets/FEEDFORWARD DATASETS/    read only input data (never edited)
   src/feedforward/
-    config.py                      paths, constants, seeds
-    export_code.py                 bundles the data code into docs/code_bundle_preprocessing.md
+    config.py                       paths, constants, seeds (single source of truth)
+    export_code.py                  bundles the data code into docs/code_bundle_preprocessing.md
     data/
-      schemas.py loaders.py profile.py          load and validate
-      nlp_text.py nlp_entities.py nlp_report.py text pipeline, NER, report
-      preprocess.py cleaning.py                 normalise tables, clean the raw kitchen file
-      calendar_future.py                        future calendar and assumed weather
-      feature_registry.py features.py text_features.py inventory_features.py
-      splits.py timeseries.py                   splits, regimes, model datasets
-    models/                        prep, attendance, baselines, cvae, bundle, train, evaluate, metrics, plots,
-                                   summary, forecast_service
-    plugins/                       surplus_detector_stub.py, gan_extra_data.py (teammates plug in here)
-    admin/review_log.py            Approve / Send back snapshots (more admin code in M7)
-    copilot/                       nlu, context_builder, prompts, llm, templates, explain, compare_prompts
-  api/                             FastAPI: main.py, deps.py, schemas.py, services.py, routes/
-  app/                             dashboard: index.html, css/ (base, service, desk), js/ (state, api, charts, views)
-  data_store/                      calendar_future.csv, schemas/, admin_logs/ (git ignored)
-  artifacts/                       processed, timeseries, nltk_data (git ignored)
-  reports/  docs/  tests/  scripts/
+      schemas.py loaders.py profile.py            load and validate every file
+      nlp_text.py nlp_entities.py nlp_report.py   text pipeline, rule based NER, normalisation report
+      text_features.py                            TF-IDF, similarity, SVD dish embedding
+      preprocess.py cleaning.py                   normalise tables, clean the raw kitchen file
+      calendar_future.py weather_types.py         future calendar, assumed weather, weather dropdown
+      feature_registry.py features.py inventory_features.py
+      splits.py timeseries.py                     chronological splits, regimes, model datasets
+    models/
+      prep.py attendance.py baselines.py          scaling, attendance forecaster, baselines and support rule
+      cvae.py bundle.py train.py                  conditional VAE, trained bundle, training (dev, --final, --include-admin)
+      evaluate.py metrics.py plots.py summary.py  evaluation, plots, reports/metrics_summary.md
+      forecast_service.py week_view.py            forecast(...) entry point, 7 day view
+    copilot/                        nlu, context_builder, prompts, llm, templates, explain, compare_prompts
+    admin/                          schemas, store (LogStore, CsvLogStore), context, history, validation, compare, review_log
+    plugins/                        surplus_detector_stub.py, gan_extra_data.py   (teammates plug in here)
+  api/                              FastAPI: main.py, deps.py, schemas.py, services.py, routes/
+  app/                              dashboard: index.html, css/, js/ (Service board, Forecast desk, Daily log)
+  data_store/                       calendar_future.csv, schemas/, admin_logs/ (real entries, git ignored)
+  artifacts/                        processed data, trained models, nltk data (regenerable, git ignored)
+  reports/                          metrics, plots, comparison tables (the review evidence)
+  docs/                             pipeline, data dictionary, concept map, objectives map, prompt scenarios, decisions, design/
+  tests/                            pytest suite and a browser test (ui_smoke.mjs)
 ```
 
-## Setup (PowerShell)
+## Setup (PowerShell, Windows)
 
 ```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 pip install -e .
-Copy-Item .env.example .env   # then edit .env
+Copy-Item .env.example .env        # then edit .env: GROQ_API_KEY, GROQ_MODEL, ADMIN_PIN
 ```
 
-## Run
+`.env` keys: `GROQ_API_KEY` (optional: without it the copilot uses standard wording), `GROQ_MODEL` (check the name is still available
+in your Groq console), `ADMIN_PIN` (needed for the Daily log). Secrets stay in `.env`; it is never committed.
 
-```powershell
-python -m feedforward.data.profile           # profile every dataset
-python -m feedforward.data.preprocess        # normalise tables to artifacts/processed
-python -m feedforward.data.cleaning          # clean the raw kitchen file, write the log
-python -m feedforward.data.calendar_future   # data_store/calendar_future.csv
-python -m feedforward.data.timeseries        # panel, windows, registry (run cleaning first)
-python -m feedforward.data.inventory_features
-python -m feedforward.data.nlp_report        # reports/nlp_normalisation_report.md
-python -m feedforward.models.train           # development model (early stopping on validation)
-python -m feedforward.models.evaluate        # metrics.json, metrics_summary.md, plots in reports/
-python -m feedforward.models.train --final   # deployment model on train + validation
-python -m feedforward.models.train --encoder gru   # optional GRU experiment
-python -m feedforward.export_code            # docs/code_bundle_preprocessing.md
-pytest
+## How to run each part (from the project folder, venv active)
 
-uvicorn api.main:app --reload             # API at http://127.0.0.1:8000/api  (docs at /docs)
-```
+| Step | Command | Output |
+|---|---|---|
+| Profile the data | `python -m feedforward.data.profile` | shape, dates, missing values of every file |
+| Preprocess and normalise text | `python -m feedforward.data.preprocess` | `artifacts/processed/` |
+| Clean the raw kitchen file | `python -m feedforward.data.cleaning` | `kitchen_clean.parquet`, `reports/cleaning_log.json` |
+| Future calendar | `python -m feedforward.data.calendar_future` | `data_store/calendar_future.csv` |
+| Features and time series datasets | `python -m feedforward.data.timeseries` | `artifacts/timeseries/`, `reports/feature_registry.md` |
+| Inventory features | `python -m feedforward.data.inventory_features` | `artifacts/timeseries/inventory_features.parquet` |
+| NLP report | `python -m feedforward.data.nlp_report` | `reports/nlp_normalisation_report.md` |
+| Train (development) | `python -m feedforward.models.train` | `artifacts/models/dev` |
+| Evaluate | `python -m feedforward.models.evaluate` | `reports/metrics.json`, `metrics_summary.md`, PNG plots |
+| Train the deployed model | `python -m feedforward.models.train --final` | `artifacts/models/final` (train plus validation) |
+| Optional GRU experiment | `python -m feedforward.models.train --encoder gru` | `artifacts/models/dev_gru` |
+| Learn from real entries | `python -m feedforward.models.train --include-admin`, then `--final --include-admin` | uses the Daily log rows, warns below 28 real days |
+| Prompt comparison (needs a key) | `python -m feedforward.copilot.compare_prompts` | `reports/prompt_comparison.md` |
+| Start the API and dashboard | `uvicorn api.main:app --reload` | http://127.0.0.1:8000/ (API docs at `/docs`) |
+| Tests | `pytest` | 120 plus tests |
+| Browser test | `node tests/ui_smoke.mjs` (Node 22, Edge, server on port 8765 with `ADMIN_PIN=1234` and a temp `FEEDFORWARD_ADMIN_LOG_DIR`) | PASS or FAIL per interaction |
+| Bundle the data code into one document | `python -m feedforward.export_code` | `docs/code_bundle_preprocessing.md` |
 
-## Dashboard (M5)
+The tests need the processed data and the final model: run the preprocessing steps and the two training commands once after a fresh clone.
 
-Start the API (`uvicorn api.main:app --reload`) and open http://127.0.0.1:8000/. Plain HTML, CSS and JavaScript modules: no build step.
-The bar at the top switches between **Service board** (View A) and **Forecast desk** (View B). Click a day in either chart to see that day.
-Browser test (needs Node 22 and Edge, API on port 8765): `node tests/ui_smoke.mjs`. Screenshots of both views are in `docs/design/`.
+## The dashboard
 
-## Copilot (M6)
+Open the server address. The bar at the top switches the view:
 
-Ask in the panel on either view, or call `POST /api/chat`. Flow: rules read the question (`copilot/nlu.py`), plain Python computes the
-figures (`context_builder.py`), one call to the language model writes the explanation from those figures (`explain.py`), and a check
-makes sure every figure in the answer comes from the data. With no key, no internet, or a failed check, a standard wording is used.
-Put `GROQ_API_KEY` (and check `GROQ_MODEL`) in `.env` to turn the language model on. The copilot only explains: it never changes a
-quantity or approves a plan. See `docs/prompt_scenarios.md`; `python -m feedforward.copilot.compare_prompts` writes `reports/prompt_comparison.md`.
+- **Service board** (default): the headline ("Cook N portions for lunch, M fewer than the usual plan"), dish tickets with range bars, the week
+  chart, "Try a what if" and the copilot. **Approve this plan** saves the plan; **Change quantities** lets you edit each dish first.
+- **Forecast desk**: past week and next 7 days in one chart, the dish by dish table with low end, most likely, high end, usual plan and cook,
+  and the surplus risk panel.
+- **Daily log** (PIN): five sections (day context, attendance, dishes and quantities, ingredients, review and save), recent entries with edit and
+  delete, CSV export and "Forecast versus actual".
 
-## API (M4)
+Click a day in a chart to see that day. "Main dishes" are the dishes the CVAE forecasts; "Show all dishes" adds the support dishes (bread, butter, chutney).
+
+## API
 
 | Endpoint | What it does |
 |---|---|
 | GET /api/health | status, project today, default plan date, data source chip |
-| GET /api/plan?date=&slot=&scope=core or all | per dish range, recommended, usual plan, surplus risk, headline sentences |
-| GET /api/week?slot=&start=&dish_id= | 7 forecast days with range, plus the 7 days before as actuals |
-| POST /api/whatif | plan with changes (attendance, exam week, festival, weather ...) next to the unchanged plan |
-| POST /api/review | Approve or Send back, stored with a forecast snapshot in data_store/admin_logs/forecast_log.csv |
-| GET /api/review?date=&slot= | latest decision |
+| GET /api/plan?date=&slot=&scope= | per dish range, recommended, usual plan, surplus risk, headline sentences |
+| GET /api/week?slot=&start=&dish_id= | 7 forecast days plus the 7 days before as actuals |
+| POST /api/whatif | plan with changes next to the unchanged plan |
+| POST /api/review, GET /api/review | Approve or Send back with a forecast snapshot; latest decision |
+| POST /api/chat | one explanation: answer, source (llm, template or rules), intent, figures used |
 | GET /api/dishes, /api/ingredients | catalogues |
-| POST /api/chat | one explanation for a question: answer text, source (llm, template or rules), intent, the figures used |
+| /api/admin/... (header `X-Admin-Pin`) | menu, validate, day (save), recent, entry (soft delete), export, fill-recipes, forecast-vs-actual |
 
-Admin endpoints arrive with the admin log milestone. Errors always say what happened and how to fix it.
+Errors always say what happened and how to fix it. CORS is closed unless `CORS_ORIGINS` is set.
 
+## Demo script (about 8 minutes)
+
+1. **Idea (1 min):** "A range, not a number, and a person decides." Open the Service board: read the headline and the data source chip
+   ("Simulated history"): say plainly that the history is simulated.
+2. **Dish tickets (1 min):** pick a dish. Green bar is the likely range, the tick is the most likely amount, the red line is the usual plan.
+3. **Week chart (1 min):** click a day; point at the exam week shading.
+4. **What if (1 min):** attendance +15 percent, then Exam week; show the summary line "Not saved until you approve".
+5. **Copilot (2 min):** "Why is Chappathi above the usual plan?", "What if attendance rises 15%?", then "Approve the plan" (it refuses and says why).
+   Show the source line under the answer (language model or standard wording).
+6. **Human decision (1 min):** Change quantities, edit one dish, Approve. Switch to the Forecast desk: status now says Approved.
+7. **Daily log (1 min):** unlock with the PIN, enter yesterday's attendance and two dishes, "Fill from recipes", Save; show the warning for a typo.
+   Then `reports/metrics_summary.md` and `docs/objectives_map.md` for the evidence.
+
+## Concepts and evidence for the review
+
+`docs/concept_map.md` (concept, slide topic, where it is used, why it fits, and what does not apply), `docs/pipeline.md`,
+`docs/data_dictionary.md`, `docs/objectives_map.md`, `docs/prompt_scenarios.md`, `docs/decisions.md` and the reports folder.
+
+## Where each teammate plugs in
+
+- **GAN rare event generator:** write synthetic rows with the columns of `artifacts/timeseries/panel.parquet` plus `expected_attendance`
+  and run `python -m feedforward.models.train --extra-data FILE`. `plugins/gan_extra_data.py` validates them; they are down weighted
+  (`EXTRA_DATA_WEIGHT`) and never used for validation, calibration or testing.
+- **Surplus and anomaly detector:** implement `assess(usual_plan, p50, p90)` from `plugins/surplus_detector_stub.py` and pass the object to
+  `ForecastService(detector=...)`. The dashboard shows whatever level it returns (low, medium, high). The inventory feature table
+  (`artifacts/timeseries/inventory_features.parquet`) holds days to expiry, stock cover and kilograms expiring soon per dish and date.
+- **Decision logic:** read `forecast_log.csv` (approved plans with `approved_qty`) and `ForecastService.forecast(...)`; the copilot never acts.
+- **Database:** implement the `LogStore` methods in `admin/store.py` and change `get_store()`.

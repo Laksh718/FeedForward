@@ -8,18 +8,21 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, options) {
+export const auth = { pin: "" };   // sent as X-Admin-Pin on every request once the admin has unlocked the Daily log
+
+async function request(path, options = {}, asText = false) {
   let res;
   try {
-    res = await fetch(`/api${path}`, options);
+    res = await fetch(`/api${path}`, { ...options, headers: { ...(options.headers || {}), ...(auth.pin ? { "X-Admin-Pin": auth.pin } : {}) } });
   } catch {
     throw new ApiError(0, "Could not reach the FeedForward server.",
       "Start it with: uvicorn api.main:app --reload (from the project folder), then refresh this page.");
   }
+  if (res.ok && asText) return res.text();
   const body = await res.json().catch(() => ({}));
   if (res.ok) return body;
   const d = body.detail;
-  if (d && typeof d === "object" && !Array.isArray(d)) throw new ApiError(res.status, d.message, d.fix);
+  if (d && typeof d === "object" && !Array.isArray(d)) { const e = new ApiError(res.status, d.message, d.fix); e.fields = d.fields; throw e; }
   if (res.status === 404) throw new ApiError(404, "This feature is not available on the server yet.", "Update the server code and restart it.");
   throw new ApiError(res.status, "The server could not answer this request.", "Try again, or check the server window for the error.");
 }
@@ -32,4 +35,6 @@ const query = (params) => {
 export const api = {
   get: (path, params = {}) => request(path + query(params)),
   post: (path, body) => request(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  del: (path, body) => request(path, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  text: (path, params = {}) => request(path + query(params), {}, true),
 };

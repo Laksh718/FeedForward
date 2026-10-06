@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/service.css">
   <link rel="stylesheet" href="css/desk.css">
+  <link rel="stylesheet" href="css/admin.css">
 </head>
 <body data-view="service">
   <a class="skip-link" href="#main">Skip to the forecast</a>
@@ -18,12 +19,14 @@
     <div class="viewbar-tabs" role="tablist">
       <button role="tab" data-view-tab="service" aria-selected="true">Service board</button>
       <button role="tab" data-view-tab="desk" aria-selected="false">Forecast desk</button>
+      <button role="tab" data-view-tab="admin" aria-selected="false">Daily log</button>
     </div>
   </nav>
   <div id="banner" class="banner" role="alert" hidden></div>
   <main id="main">
     <div id="view-service" class="view" data-view-panel="service"></div>
     <div id="view-desk" class="view" data-view-panel="desk" hidden></div>
+    <div id="view-admin" class="view" data-view-panel="admin" hidden></div>
   </main>
   <script type="module" src="js/main.js"></script>
 </body>

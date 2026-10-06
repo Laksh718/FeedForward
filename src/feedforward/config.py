@@ -1,5 +1,6 @@
 """Single source of truth for paths, constants and seeds."""
 
+import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -19,7 +20,7 @@ MODELS_DIR = ARTIFACTS_DIR / "models"
 NLTK_DATA_DIR = ARTIFACTS_DIR / "nltk_data"
 REPORTS_DIR = PROJECT_ROOT / "reports"
 DATA_STORE_DIR = PROJECT_ROOT / "data_store"
-ADMIN_LOG_DIR = DATA_STORE_DIR / "admin_logs"
+ADMIN_LOG_DIR = Path(os.getenv("FEEDFORWARD_ADMIN_LOG_DIR") or DATA_STORE_DIR / "admin_logs")  # tests point this at a temp folder
 CALENDAR_FUTURE_CSV = DATA_STORE_DIR / "calendar_future.csv"
 
 # Reproducibility.
@@ -53,6 +54,12 @@ N_SAMPLES = 500
 EXTRA_DATA_WEIGHT = 0.5     # weight of synthetic rows from the GAN (teammate)
 RECOMMEND_QUANTILE = 0.75   # cook the P75 by default
 COVERAGE_TARGET = 0.80      # the P10 to P90 band should contain about 80 percent of outcomes
+
+# Admin daily log
+ENROLLED = 4000             # enrolled students: the upper limit for an attendance entry
+MIN_REAL_DAYS = 28          # warn when retraining with fewer real days than this
+REAL_ROW_WEIGHT = 3.0       # default weight of real (admin) rows when retraining
+TEMP_MIN_C, TEMP_MAX_C = 10, 50
 
 # Domain constants.
 MEAL_SLOTS = ("breakfast", "lunch", "snacks", "dinner")

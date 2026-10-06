@@ -76,7 +76,10 @@ class ForecastService:
     def __init__(self, model_dir=FINAL_DIR, history: pd.DataFrame | None = None,
                  detector: SurplusDetector | None = None, recommend_quantile: float = C.RECOMMEND_QUANTILE) -> None:
         self.bundle = ModelBundle.load(model_dir)
-        self.history = history if history is not None else pd.read_parquet(C.PROCESSED_DIR / "kitchen_clean.parquet")
+        if history is None:
+            from feedforward.admin.history import load_combined_history  # simulated history plus real entries
+            history = load_combined_history()
+        self.history = history
         self.dishes = pd.read_parquet(C.PROCESSED_DIR / "dishes.parquet")
         self.menu = pd.read_parquet(C.PROCESSED_DIR / "weekly_menu.parquet")
         self.detector = detector or StubSurplusDetector()

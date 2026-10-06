@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.deps import cors_origins
-from api.routes import catalogue, copilot, forecast, health, review, whatif
+from api.routes import admin, catalogue, copilot, forecast, health, review, whatif
 from feedforward import config as C
 
 APP_DIR = C.PROJECT_ROOT / "app"
@@ -21,7 +21,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="FeedForward", version="0.1.0", description="Predict. Prevent. Provide.")
     if cors_origins():
         app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["GET", "POST"], allow_headers=["*"])
-    for module in (health, forecast, whatif, review, catalogue, copilot):
+    for module in (health, forecast, whatif, review, catalogue, copilot, admin):
         app.include_router(module.router, prefix="/api")
 
     @app.exception_handler(ValueError)

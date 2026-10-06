@@ -3,6 +3,7 @@
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #15291F; background: #EEF1EC; }
 body[data-view="desk"] { background: #F4F6FB; }
+body[data-view="admin"] { background: #EEF1EC; }
 h1, h2, h3, p { margin: 0; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -18,6 +19,8 @@ button { cursor: pointer; }
 body[data-view="desk"] .viewbar { background: #0E1730; }
 .viewbar-tabs { display: flex; gap: 4px; }
 .viewbar-tabs button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: #DCE5DF; }
+.viewbar-tabs { flex-wrap: wrap; }
+@media (max-width: 480px) { .viewbar { padding: 4px 8px; gap: 6px; } .viewbar-tabs button { padding: 0 10px; } }
 .viewbar-tabs button[aria-selected="true"] { background: #fff; color: #0F1A14; font-weight: 600; }
 
 /* shared button shapes (colours come from the view) */

@@ -44,3 +44,11 @@
 | 40 | The UI shows where an answer came from (language model or standard wording) | Honest about what wrote the text |
 | 41 | `reports/prompt_comparison.md` is only filled with real model answers when a key is present; otherwise it says the model columns were not run | No made up before and after evidence |
 | 42 | `tests/test_copilot.py` scans the whole project for the terms the review penalises (the list is in that test) | The review gives negative marks for them, so a slip fails the test instead of the review |
+| 43 | Real entries enter the history immediately (lags, usual plan, forecasts) and flow into the calendar and weather features like the dataset columns | A saved exam week or temperature changes that date's forecast at once (tested) |
+| 44 | Saving a date replaces that date's section: rows no longer in the form are marked deleted, nothing is erased | "Saving again updates it" without leaving stale rows. The file keeps everything for audit |
+| 45 | Dish rows without an attendance number for their slot are saved but skipped for learning, with a warning | Demand per attendee needs the attendance |
+| 46 | Sanity warnings compare each value with the forecast range stretched three times on both sides (and fixed bands for attendance, prepared quantity and ingredients) | Catches extra digits without a second network; the same "unusual against expected" idea as autoencoder anomaly detection |
+| 47 | `--include-admin` gives real rows weight 3 and warns below 28 real days; admin dates fall in the training split | A few real days still count without drowning the simulated year |
+| 48 | The admin PIN lives in `.env` and travels in an `X-Admin-Pin` header; the placeholder `change-me` is refused | Simple as the brief asks, and it cannot be left at a known default by accident |
+| 49 | `FEEDFORWARD_ADMIN_LOG_DIR` redirects the logs (used by tests) | Tests never touch real entries |
+| 50 | Future dates accept only weather and special day information | Attendance and dishes cannot be known before the day |

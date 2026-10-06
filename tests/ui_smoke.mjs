@@ -92,15 +92,61 @@ await waitFor("document.querySelector('#dk-answer').textContent.includes('One ca
 const deskReply = await ev("document.querySelector('#dk-answer').textContent");
 check("B copilot answer area shows an answer", deskReply.includes("Short answer:"), deskReply.slice(0, 90));
 
+
+// ---- Daily log (needs the server started with ADMIN_PIN=1234 and FEEDFORWARD_ADMIN_LOG_DIR pointing at a temp folder)
+const setVal = (sel, v) => ev(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); e.value = ${JSON.stringify(String(v))}; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+await ev("location.hash = 'admin'");
+await waitFor("document.querySelector('#ad-pin')", "pin field");
+await setVal("#ad-pin", "0000");
+await ev("document.querySelector('#ad-pin-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))");
+await waitFor("document.querySelector('#ad-gate-msg').textContent.includes('PIN')", "wrong pin message");
+check("C wrong PIN is refused with a clear message", await ev("document.querySelector('#ad-app').hidden"), await ev("document.querySelector('#ad-gate-msg').textContent.slice(0, 80)"));
+await setVal("#ad-pin", "1234");
+await ev("document.querySelector('#ad-pin-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))");
+await waitFor("!document.querySelector('#ad-app').hidden && document.querySelector('#ad-rows input')", "unlock");
+check("C right PIN unlocks the form", true, `date ${await ev("document.querySelector('#ad-date').value")} weekday ${await ev("document.querySelector('#ad-wd').value")}`);
+await setVal("#ad-wd", "Monday");
+await waitFor("document.querySelector('#ad-date').value === '2026-10-05'", "weekday sync");
+check("C weekday selector moves the date", true, await ev("document.querySelector('#ad-date').value"));
+await setVal("#ad-date", "2026-10-06");
+await waitFor("document.querySelector('#ad-wd').value === 'Tuesday'", "date sync");
+check("C date change updates the weekday", true);
+await setVal("#ad-tmax", 33); await setVal("#ad-tmin", 26); await setVal("#ad-weather", "Light Rain");
+await setVal("#ad-att-lunch", 3300);
+const rows = "document.querySelectorAll('#ad-rows tr')";
+await ev(`(() => { const r = ${rows}; const set = (tr, k, v) => { const i = tr.querySelector('[data-k=' + k + ']'); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); }; set(r[0], 'prepared', 3500); set(r[0], 'eaten', 3100); set(r[1], 'prepared', 3300); set(r[1], 'left', 200); })()`);
+await ev("document.querySelector('#ad-fill').click()");
+await waitFor("document.querySelectorAll('#ad-ing tr input[data-k=used_kg]').length > 0", "fill from recipes");
+check("C fill from recipes adds ingredient rows", true, `${await ev("document.querySelectorAll('#ad-ing tr input[data-k=used_kg]').length")} ingredients`);
+await ev("document.querySelector('#ad-check').click()");
+await waitFor("document.querySelector('#ad-msg').textContent.length > 0", "check message");
+check("C check entry gives feedback", true, await ev("document.querySelector('#ad-msg').textContent.slice(0, 100)"));
+await ev("document.querySelector('#ad-save').click()");
+await waitFor("document.querySelector('#ad-msg').textContent.includes('Saved')", "save");
+check("C save confirms what was saved", true, await ev("document.querySelector('#ad-msg').textContent.slice(0, 120)"));
+await waitFor("document.querySelectorAll('#ad-recent tr [data-edit]').length > 0", "recent entries");
+check("C recent entries list the saved day", true);
+await ev(`(() => { const i = ${rows}[0].querySelector('[data-k=prepared]'); i.value = 40000; i.dispatchEvent(new Event('input', { bubbles: true })); const e = ${rows}[0].querySelector('[data-k=eaten]'); e.value = 39000; e.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+await ev("document.querySelector('#ad-check').click()");
+await waitFor("document.querySelector('#ad-msg').textContent.includes('far outside')", "typo warning");
+check("C a likely typo raises a warning", true);
+await setVal("#ad-date", "2026-10-20");
+await waitFor("!document.querySelector('#ad-future').hidden", "future note");
+check("C a future date shows only the day context", await ev("document.querySelector('#ad-past').hidden"));
+await ev("document.querySelector('[data-export=attendance]').click()");
+const bad = await ev("document.querySelector('#ad-s6') && [...document.querySelectorAll('#view-admin button, #view-admin select, #view-admin input:not([type=checkbox])')].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 43.5).map((e) => (e.id || e.textContent.slice(0, 14)) + ':' + Math.round(e.getBoundingClientRect().height)).join(' | ')");
+check("C every visible control is at least 44px tall", bad === "", bad);
+
+await ev("location.hash = 'desk'");
 const small = await ev("[...document.querySelectorAll('#view-desk button, #view-desk select, #view-desk input:not([type=range])')].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 43.5).map((e) => (e.id || e.textContent.slice(0, 14)) + ':' + Math.round(e.getBoundingClientRect().height)).join(' | ')");
 check("B every visible control is at least 44px tall", small === "", small);
 
 // mobile: false keeps the viewport at 390 px, so content that is too wide shows up as overflow
 await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 900, deviceScaleFactor: 1, mobile: false });
-for (const view of ["service", "desk"]) {
+for (const view of ["service", "desk", "admin"]) {
   await ev(`location.hash = '${view}'`);
   await sleep(700);
-  const wide = await ev("[...document.querySelectorAll('#view-" + view + " *')].filter((e) => e.offsetParent && e.getBoundingClientRect().right > 391 && !e.closest('.tablewrap, svg')).slice(0, 6).map((e) => (e.id || e.className.baseVal || e.className || e.tagName) + ':' + Math.round(e.getBoundingClientRect().right)).join(' | ')");
+  const wide = await ev("[...document.querySelectorAll('#view-" + view + " *')].filter((e) => e.offsetParent && e.getBoundingClientRect().right > 391 && !e.closest('.tablewrap, .ad-tablewrap, svg')).slice(0, 6).map((e) => (e.id || e.className.baseVal || e.className || e.tagName) + ':' + Math.round(e.getBoundingClientRect().right)).join(' | ')");
   check(`phone width: nothing wider than the screen (${view})`, wide === "" && await ev("document.documentElement.scrollWidth <= 391"), wide);
 }
 console.log(results.join("\n"));

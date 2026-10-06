@@ -8,9 +8,11 @@ import numpy as np
 import pandas as pd
 
 from feedforward import config as C
+from feedforward.admin.context import overlay_calendar, overlay_weather
 from feedforward.data.calendar_future import assumed_weather
 from feedforward.data.feature_registry import LAGS, MEAL_SLOTS, PHASE_GROUPS
 from feedforward.data.feature_registry import TEXT_DIM as _TEXT_DIM
+from feedforward.data.weather_types import WEATHER_TYPE_RAIN_LEVEL  # noqa: F401  (also imported from here by other modules)
 
 CAP_DAYS = 60
 HOT_C = 36.0
@@ -23,12 +25,6 @@ PHASE_MAP = {
     "theory_exam_period": "theory", "study_gap": "study_gap", "semester_break": "away",
     "summer_semester": "away", "enrolment": "enrolment", "orientation": "enrolment",
 }
-# Weather type (the admin dropdown) to rain level, from how the dataset maps condition text.
-WEATHER_TYPE_RAIN_LEVEL = {
-    "Mist": 0, "Haze": 0, "Fair": 0, "Partly Cloudy": 0, "Fog": 0, "Smoke": 0, "Dry": 0,
-    "Showers in the Vicinity": 1, "Drizzle": 1, "Light Drizzle": 1, "Light Rain": 1,
-    "Rain": 2, "Thunder": 2, "Light Rain with Thunder": 2, "Heavy Rain": 3,
-}
 CONFIDENCE_RANK = {"official": 0, "probable": 1, "estimated": 2}
 CALENDAR_COLS = ["date", "tn_public_holiday", "major_festival", "special_declared_holiday",
                  "compensatory_working_day", "rain_holiday_colleges", "senior_phase", "first_year_phase",
@@ -39,7 +35,8 @@ def full_calendar() -> pd.DataFrame:
     """Real calendar followed by the seeded future calendar."""
     real = pd.read_parquet(C.PROCESSED_DIR / "calendar.parquet")[CALENDAR_COLS]
     future = pd.read_csv(C.CALENDAR_FUTURE_CSV, parse_dates=["date"], encoding="utf-8")[CALENDAR_COLS]
-    return pd.concat([real, future], ignore_index=True).sort_values("date").reset_index(drop=True)
+    cal = pd.concat([real, future], ignore_index=True).sort_values("date").reset_index(drop=True)
+    return overlay_calendar(cal)  # special days, exam weeks and festivals entered by the admin
 
 
 def full_weather(dates: pd.DatetimeIndex) -> pd.DataFrame:
@@ -52,7 +49,8 @@ def full_weather(dates: pd.DatetimeIndex) -> pd.DataFrame:
     if len(missing):
         parts.append(assumed_weather(pd.DatetimeIndex(missing), real))
     cols = ["date", "temp_max_c", "temp_min_c", "temp_mean_c", "rain_level", "weather_reliable", "weather_assumed"]
-    return pd.concat(parts)[cols].sort_values("date").reset_index(drop=True)
+    out = pd.concat(parts)[cols].sort_values("date").reset_index(drop=True)
+    return overlay_weather(out)  # temperatures and weather types entered by the admin
 
 
 def _days_to_and_since(is_event: pd.Series, dates: pd.Series) -> tuple[np.ndarray, np.ndarray]:
