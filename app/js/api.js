@@ -1,0 +1,35 @@
+// API client. Every failure becomes an ApiError with a plain message and a way to fix it.
+
+export class ApiError extends Error {
+  constructor(status, message, fix) {
+    super(message);
+    this.status = status;
+    this.fix = fix;
+  }
+}
+
+async function request(path, options) {
+  let res;
+  try {
+    res = await fetch(`/api${path}`, options);
+  } catch {
+    throw new ApiError(0, "Could not reach the FeedForward server.",
+      "Start it with: uvicorn api.main:app --reload (from the project folder), then refresh this page.");
+  }
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) return body;
+  const d = body.detail;
+  if (d && typeof d === "object" && !Array.isArray(d)) throw new ApiError(res.status, d.message, d.fix);
+  if (res.status === 404) throw new ApiError(404, "This feature is not available on the server yet.", "Update the server code and restart it.");
+  throw new ApiError(res.status, "The server could not answer this request.", "Try again, or check the server window for the error.");
+}
+
+const query = (params) => {
+  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ""));
+  return q.toString() ? `?${q}` : "";
+};
+
+export const api = {
+  get: (path, params = {}) => request(path + query(params)),
+  post: (path, body) => request(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+};

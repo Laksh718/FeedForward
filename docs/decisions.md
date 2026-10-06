@@ -30,3 +30,10 @@
 | 26 | `/api/review` recomputes the forecast on the server and stores it with the decision | The stored snapshot cannot be altered by the browser |
 | 27 | NLTK resources are never downloaded implicitly; only the pipeline entry points download | An implicit download made one test run take 48 minutes offline |
 | 28 | Chat and admin endpoints are added in their own milestones, not as empty stubs | No dead routes |
+| 29 | The Daily log (admin) tab is built in the admin milestone, together with its backend | A form that cannot save would be a dead screen. The view switch is ready for a third tab |
+| 30 | The copilot panel is built now and shows a clear "not available on this server" message until the chat endpoint exists | The layout is part of both designs; the message says what happened |
+| 31 | Chart days are clickable (and keyboard operable); the week starts tomorrow and the plan day changes inside it | Not in the screenshots, but without it only one day could be inspected |
+| 32 | "Change quantities" lets the person edit each dish; Approve stores the edited number as `approved_qty` next to the model's recommendation | Keeps the human decision on record. The copilot still never changes quantities |
+| 33 | The dish total row is labelled "Main dishes" (core) or "All dishes" depending on the Show all dishes switch | Honest label: the model forecasts main dishes with the CVAE, support dishes with a rate rule |
+| 34 | The Surplus risk panel says the risk is a simple first version | It is the stub for the teammate's detector |
+| 35 | Fonts load from Google Fonts with system fallbacks | Per the brief. Offline, the layout still works with system fonts |

@@ -1,0 +1,54 @@
+// What if controls, shared by both views: attendance change, special day, weather.
+import { resetOverrides, setOverrides, subscribe } from "./state.js";
+import { WEATHER_TYPES, esc, fmt } from "./util.js";
+
+const SPECIAL = { "": "None", special_day: "Holiday or campus event", exam_week: "Exam week", festival: "Festival" };
+let uid = 0;
+
+export function mountWhatIf(root, { gridClass, fieldClass = "field", showSummary = true }) {
+  const id = `wi${uid++}`;
+  root.innerHTML = `
+    <div class="${gridClass}">
+      <div class="${fieldClass}"><label for="${id}-att">Attendance change</label>
+        <input id="${id}-att" type="range" min="-30" max="30" step="5" value="0">
+        <div class="hint" id="${id}-att-hint" aria-live="polite">0% from the usual</div></div>
+      <div class="${fieldClass}"><label for="${id}-special">Special day</label>
+        <select id="${id}-special">${Object.entries(SPECIAL).map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select></div>
+      <div class="${fieldClass}"><label for="${id}-weather">Weather</label>
+        <select id="${id}-weather"><option value="">As forecast</option><option value="Dry">Dry</option>
+        ${WEATHER_TYPES.map((w) => `<option value="${esc(w)}">${esc(w)}</option>`).join("")}</select></div>
+    </div>
+    <div class="whatif-foot wi-result" id="${id}-foot" aria-live="polite" hidden></div>`;
+  const q = (s) => root.querySelector(`#${id}-${s}`);
+  const att = q("att"), special = q("special"), weather = q("weather"), hint = q("att-hint"), foot = q("foot");
+  const label = (v) => (Number(v) === 0 ? "0% from the usual" : `${v > 0 ? "+" : ""}${v}% from the usual`);
+
+  const apply = () => {
+    const o = {};
+    if (Number(att.value) !== 0) o.attendance_change_pct = Number(att.value);
+    if (special.value) o[special.value] = true;
+    if (weather.value) o.weather_type = weather.value;
+    return setOverrides(o);
+  };
+  att.addEventListener("input", () => { hint.textContent = label(att.value); });
+  att.addEventListener("change", apply);
+  special.addEventListener("change", apply);
+  weather.addEventListener("change", apply);
+
+  subscribe((s) => {
+    const o = s.overrides;
+    att.value = o.attendance_change_pct ?? 0;
+    hint.textContent = label(att.value);
+    special.value = o.special_day ? "special_day" : o.exam_week ? "exam_week" : o.festival ? "festival" : "";
+    weather.value = o.weather_type ?? "";
+    if (!showSummary) return;
+    const active = Object.keys(o).length > 0 && s.whatif && s.plan;
+    foot.hidden = !active;
+    if (active) {
+      const d = s.whatif.difference.recommended, now = s.plan.totals.recommended;
+      foot.innerHTML = `<span>Cooking would change from ${fmt(now - d)} to ${fmt(now)} portions (${d >= 0 ? "+" : "-"}${fmt(Math.abs(d))}). Not saved until you approve.</span>` +
+        `<button class="btn" type="button" id="${id}-reset">Back to the normal plan</button>`;
+      foot.querySelector("button").addEventListener("click", () => resetOverrides());
+    }
+  });
+}

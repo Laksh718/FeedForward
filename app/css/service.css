@@ -1,0 +1,100 @@
+/* View A: Service board. Bricolage Grotesque (headings), Instrument Sans (body). */
+#view-service { --ground: #EEF1EC; --ink: #15291F; --green: #2F6B4F; --band: #9CC4AE; --usual: #C4452D; --line: #D5DDD5;
+  --muted: #55665B; --exam: #F8F0DD;
+  font-family: "Instrument Sans", system-ui, sans-serif; color: var(--ink); background: var(--ground); padding: 28px 32px 48px; }
+#view-service h1, #view-service h2, #view-service h3, #view-service .brand { font-family: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif; }
+
+.sv-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.sv-brand { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 30px; letter-spacing: -.5px; line-height: 1.1; }
+.sv-sub { color: var(--muted); margin-top: 4px; font-size: 15px; }
+.sv-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.sv-pills { display: inline-flex; padding: 5px; border-radius: 999px; background: #DDE4DC; gap: 2px; }
+.sv-pills button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: transparent; font-weight: 500; }
+.sv-pills button[aria-pressed="true"] { background: #15291F; color: #fff; font-weight: 600; }
+.sv-chip { min-height: 36px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 999px; border: 1px solid #B9C5BB; color: var(--muted); font-size: 14px; background: transparent; }
+
+.sv-hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-top: 30px; flex-wrap: wrap; }
+.sv-hero-text { flex: 1 1 520px; max-width: 760px; }
+.sv-headline { font-size: clamp(30px, 4.4vw, 46px); line-height: 1.04; font-weight: 700; letter-spacing: -1px; }
+.sv-support { margin-top: 14px; font-size: 18px; line-height: 1.4; color: #2F4237; max-width: 640px; }
+.sv-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.sv-actions .btn-primary { background: var(--green); color: #fff; border-color: var(--green); }
+.sv-actions .btn-ghost { background: transparent; color: var(--ink); border-color: var(--ink); }
+.sv-status { flex-basis: 100%; font-size: 14px; color: var(--muted); min-height: 20px; }
+.sv-note { margin-top: 10px; font-size: 14px; color: #6B4A00; background: #F6E7BF; display: inline-block; padding: 4px 10px; border-radius: 6px; }
+
+.sv-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; margin-top: 30px; align-items: start; }
+.sv-grid > * { min-width: 0; }
+.sv-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.sv-section-head h2 { font-size: 24px; font-weight: 500; }
+.sv-legend-text { font-size: 14px; color: var(--muted); }
+
+.tickets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.ticket { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+.ticket-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.ticket-name { font-family: "Bricolage Grotesque", sans-serif; font-weight: 500; font-size: 21px; line-height: 1.15; }
+#view-service .pill { display: inline-block; white-space: nowrap; padding: 3px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+#view-service .pill.high { background: #F7DAD3; color: #8A2A18; }
+#view-service .pill.medium { background: #F6E7BF; color: #6B4A00; }
+#view-service .pill.low { background: #DCEBE1; color: #2D5A42; }
+.ticket-qty { margin-top: 14px; display: flex; align-items: baseline; gap: 8px; }
+.ticket-qty .big { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 42px; letter-spacing: -1px; line-height: 1; }
+.ticket-qty .unit { color: var(--muted); font-size: 15px; }
+.ticket-qty input { width: 140px; min-height: 48px; font-size: 26px; font-weight: 700; padding: 0 10px; border: 2px solid var(--green); border-radius: 8px; background: #fff; }
+.rangebar { position: relative; height: 12px; margin: 16px 0 12px; border-radius: 6px; background: #E3E8E2; }
+.rangebar .band { position: absolute; top: 0; bottom: 0; background: var(--band); border-radius: 6px; }
+.rangebar .tick { position: absolute; top: -6px; bottom: -6px; width: 3px; margin-left: -1.5px; background: #111; border-radius: 2px; }
+.rangebar .usual { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1.5px; background: var(--usual); border-radius: 2px; }
+.ticket-cap { font-size: 14px; color: var(--muted); }
+.show-all { margin-top: 14px; background: transparent; border: 2px solid var(--ink); color: var(--ink); }
+
+#view-service .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+.weekcard { margin-top: 28px; padding: 22px 24px 18px; }
+.weekcard .sv-section-head { margin-bottom: 8px; }
+#view-service .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+#view-service .chart text { font-family: "Instrument Sans", system-ui, sans-serif; }
+#view-service .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; font-size: 14px; color: var(--muted); }
+#view-service .legend span { display: inline-flex; align-items: center; gap: 8px; }
+#view-service .legend i { display: inline-block; width: 22px; height: 4px; border-radius: 2px; }
+#view-service .legend i.swatch { height: 12px; }
+#view-service .legend i.dash { background: repeating-linear-gradient(90deg, var(--usual) 0 6px, transparent 6px 10px); }
+
+.whatif { margin-top: 28px; padding: 22px 24px; background: #DFE5DD; border-radius: 10px; }
+.whatif h2 { font-size: 22px; font-weight: 500; margin-bottom: 16px; }
+.whatif-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.field label { display: block; font-weight: 600; font-size: 15px; margin-bottom: 8px; }
+.field select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #B7C2B8; border-radius: 8px; background: #fff; }
+.field input[type="range"] { width: 100%; min-height: 44px; accent-color: var(--green); }
+.field .hint { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.whatif-foot { margin-top: 16px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 15px; }
+.whatif-foot .btn { background: transparent; border-color: var(--ink); }
+
+.copilot { position: sticky; top: 16px; overflow: hidden; display: flex; flex-direction: column; max-height: calc(100vh - 32px); }
+.copilot-head { padding: 20px 22px 14px; border-bottom: 1px solid var(--line); }
+.copilot-head h2 { font-size: 21px; font-weight: 500; }
+.copilot-head p { margin-top: 6px; font-size: 14px; color: var(--muted); line-height: 1.4; }
+.chat-log { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; min-height: 120px; }
+.bubble { padding: 12px 14px; border-radius: 14px; font-size: 15px; line-height: 1.45; max-width: 92%; white-space: pre-wrap; }
+.bubble.user { align-self: flex-end; background: #15291F; color: #fff; border-bottom-right-radius: 4px; }
+.bubble.bot { align-self: flex-start; background: #EDF0EC; border-bottom-left-radius: 4px; }
+.bubble.err { align-self: flex-start; background: #FBE3DC; color: #7A2514; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 18px 14px; }
+.chip-btn { min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid #A9B8AC; background: #fff; font-size: 14px; }
+.chat-form { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); }
+.chat-form input { flex: 1; min-width: 0; min-height: 48px; padding: 0 12px; border: 1px solid #B7C2B8; border-radius: 8px; background: #fff; }
+.chat-form .btn { background: var(--green); color: #fff; border-color: var(--green); }
+
+@media (max-width: 1040px) {
+  .sv-grid { grid-template-columns: 1fr; }
+  .copilot { position: static; max-height: none; }
+}
+@media (max-width: 640px) {
+  #view-service { padding: 20px 16px 40px; }
+  .sv-pills { max-width: 100%; }
+  .sv-pills button { padding: 0 11px; }
+  .tickets, .whatif-grid { grid-template-columns: minmax(0, 1fr); }
+  .sv-actions .btn { flex: 1 1 100%; }
+  .weekcard { padding: 16px 12px; }
+  #view-service .chart { overflow-x: auto; }
+  #view-service .chart svg { min-width: 560px; }
+}

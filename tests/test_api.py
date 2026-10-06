@@ -75,6 +75,16 @@ def test_review_stores_snapshot(client, isolated_log):
     again = client.post("/api/review", json=dict(body, decision="send_back")).json()
     assert again["review"]["decision"] == "send_back"
     assert client.post("/api/review", json=dict(body, decision="maybe")).status_code == 422
+    assert client.post("/api/review", json=dict(body, adjusted_quantities={"D999": 5})).status_code == 400
+    assert client.post("/api/review", json=dict(body, adjusted_quantities={"D053": -1})).status_code == 422
+    ok = client.post("/api/review", json=dict(body, adjusted_quantities={"D053": 3000})).json()
+    assert ok["stored_rows"] > 0
+    import pandas as pd
+
+    from feedforward.admin import review_log
+    log = pd.read_csv(review_log.LOG_PATH)
+    row = log[(log["dish_id"] == "D053") & (log["decision"] == "approve")].iloc[-1]
+    assert row["approved_qty"] == 3000
 
 
 def test_catalogues(client):

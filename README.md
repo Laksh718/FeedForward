@@ -7,7 +7,7 @@ the final decision.
 **Data caveat:** the kitchen history is SIMULATED on a real menu, a real calendar and real weather.
 No real world savings are claimed. The February 2026 weather rows are unverified copies of March.
 
-## Folder tree (after M4)
+## Folder tree (after M5)
 
 ```
 FeedForward/
@@ -28,7 +28,7 @@ FeedForward/
     admin/review_log.py            Approve / Send back snapshots (more admin code in M7)
     copilot/                       filled in M6
   api/                             FastAPI: main.py, deps.py, schemas.py, services.py, routes/
-  app/                             dashboard (M5)
+  app/                             dashboard: index.html, css/ (base, service, desk), js/ (state, api, charts, views)
   data_store/                      calendar_future.csv, schemas/, admin_logs/ (git ignored)
   artifacts/                       processed, timeseries, nltk_data (git ignored)
   reports/  docs/  tests/  scripts/
@@ -63,6 +63,12 @@ pytest
 
 uvicorn api.main:app --reload             # API at http://127.0.0.1:8000/api  (docs at /docs)
 ```
+
+## Dashboard (M5)
+
+Start the API (`uvicorn api.main:app --reload`) and open http://127.0.0.1:8000/. Plain HTML, CSS and JavaScript modules: no build step.
+The bar at the top switches between **Service board** (View A) and **Forecast desk** (View B). Click a day in either chart to see that day.
+Browser test (needs Node 22 and Edge, API on port 8765): `node tests/ui_smoke.mjs`. Screenshots of both views are in `docs/design/`.
 
 ## API (M4)
 

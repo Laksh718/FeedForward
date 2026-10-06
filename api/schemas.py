@@ -58,6 +58,13 @@ class ReviewIn(BaseModel):
     reviewer: str | None = Field(None, max_length=80)
     note: str | None = Field(None, max_length=500)
     overrides: OverridesIn = OverridesIn()
+    adjusted_quantities: dict[str, int] = Field(default_factory=dict, description="dish_id to portions the reviewer changed")
+
+    @model_validator(mode="after")
+    def _check_quantities(self) -> "ReviewIn":
+        if any(q < 0 or q > 20000 for q in self.adjusted_quantities.values()):
+            raise ValueError("Quantities must be between 0 and 20,000 portions.")
+        return self
 
 
 def check_date(day: Date) -> None:

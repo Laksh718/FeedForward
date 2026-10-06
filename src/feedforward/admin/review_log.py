@@ -14,16 +14,23 @@ from feedforward import config as C
 
 LOG_PATH = C.ADMIN_LOG_DIR / "forecast_log.csv"
 COLUMNS = ["reviewed_at", "date", "meal_slot", "decision", "reviewer", "note", "dish_id", "p10", "p50", "p90",
-           "recommended", "usual_plan", "surplus_risk", "overrides", "model_trained_to", "data_source"]
+           "recommended", "approved_qty", "usual_plan", "surplus_risk", "overrides", "model_trained_to", "data_source"]
 _lock = threading.Lock()
 
 
-def append_review(plan: dict, decision: str, reviewer: str | None, note: str | None, model_info: dict) -> int:
-    """Write one row per dish of the plan that was reviewed. Returns the number of rows written."""
+def append_review(plan: dict, decision: str, reviewer: str | None, note: str | None, model_info: dict,
+                  adjusted: dict[str, int] | None = None) -> int:
+    """Write one row per dish of the plan that was reviewed. Returns the number of rows written.
+
+    approved_qty is what the reviewer approved: the recommendation unless they changed the quantity.
+    """
+    adjusted = adjusted or {}
     now = datetime.now().isoformat(timespec="seconds")
     rows = [{"reviewed_at": now, "date": plan["date"], "meal_slot": plan["meal_slot"], "decision": decision,
              "reviewer": reviewer or "", "note": note or "", "dish_id": d["dish_id"], "p10": d["p10"], "p50": d["p50"],
-             "p90": d["p90"], "recommended": d["recommended"], "usual_plan": d["usual_plan"],
+             "p90": d["p90"], "recommended": d["recommended"],
+             "approved_qty": adjusted.get(d["dish_id"], d["recommended"]) if decision == "approve" else "",
+             "usual_plan": d["usual_plan"],
              "surplus_risk": d["surplus_risk"], "overrides": json.dumps(plan["overrides_applied"]),
              "model_trained_to": model_info.get("train_end", ""), "data_source": "model_snapshot"}
             for d in plan["dishes"]]

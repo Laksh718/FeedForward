@@ -18,5 +18,5 @@ def health(svc: ForecastService = Depends(get_service)) -> dict:
     today = services.today()
     return {"status": "ok", "today": str(today), "default_plan_date": str(today + timedelta(days=1)),
             "history_last_day": str(svc.history["date"].max().date()), "meal_slots": list(C.MEAL_SLOTS),
-            "model": svc.bundle.info, "data_source_chip": services.DATA_SOURCE_CHIP,
+            "model": svc.bundle.info, "data_source_chip": services.DATA_SOURCE_CHIP, "data_source_short": "Simulated history",
             "data_note": "Kitchen history is simulated. Menu, calendar and weather are real; recipes and popularity are estimated."}

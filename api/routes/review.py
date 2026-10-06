@@ -18,7 +18,10 @@ def review(body: ReviewIn, svc: ForecastService = Depends(get_service)) -> dict:
     """Approve or send back a plan. The forecast is recomputed here and stored as a snapshot with the decision."""
     check_date(body.date)
     plan = services.plan_response(svc, body.date, body.meal_slot, body.overrides.to_domain(), "all")
-    rows = append_review(plan, body.decision, body.reviewer, body.note, svc.bundle.info)
+    unknown = set(body.adjusted_quantities) - {d["dish_id"] for d in plan["dishes"]}
+    if unknown:
+        raise ValueError(f"These dishes are not on the menu for that slot: {sorted(unknown)}")
+    rows = append_review(plan, body.decision, body.reviewer, body.note, svc.bundle.info, body.adjusted_quantities)
     return {"stored_rows": rows, "review": latest_review(plan["date"], body.meal_slot),
             "message": "Plan approved and saved." if body.decision == "approve" else "Plan sent back and saved."}
 
