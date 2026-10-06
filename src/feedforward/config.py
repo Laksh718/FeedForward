@@ -39,7 +39,9 @@ TEST_START, TEST_END = "2026-08-12", "2026-10-05"
 FUZZY_ACCEPT = 90.0   # accept silently
 FUZZY_REVIEW = 75.0   # accept but put on the review list
 
-DISH_TEXT_DIM = 8     # size of the TF-IDF + SVD dish text embedding
+N_FOLDS, FOLD_DAYS = 4, 28   # rolling origin evaluation
+SEQ_LOOKBACK = 21            # days of history in each sequence window
+DISH_TEXT_DIM = 8    # size of the TF-IDF + SVD dish text embedding
 
 # Domain constants.
 MEAL_SLOTS = ("breakfast", "lunch", "snacks", "dinner")

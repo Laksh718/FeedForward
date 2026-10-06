@@ -7,18 +7,26 @@ the final decision.
 **Data caveat:** the kitchen history is SIMULATED on a real menu, a real calendar and real weather.
 No real world savings are claimed. The February 2026 weather rows are unverified copies of March.
 
-## Folder tree (M0)
+## Folder tree (after M2)
 
 ```
 FeedForward/
   Datasets/FEEDFORWARD DATASETS/   read only input data
   src/feedforward/
     config.py                      paths, constants, seeds
-    data/                          schemas.py, loaders.py, profile.py (more in M1 and M2)
+    export_code.py                 bundles the data code into docs/code_bundle_preprocessing.md
+    data/
+      schemas.py loaders.py profile.py          load and validate
+      nlp_text.py nlp_entities.py nlp_report.py text pipeline, NER, report
+      preprocess.py cleaning.py                 normalise tables, clean the raw kitchen file
+      calendar_future.py                        future calendar and assumed weather
+      feature_registry.py features.py text_features.py inventory_features.py
+      splits.py timeseries.py                   splits, regimes, model datasets
     models/ admin/ copilot/ plugins/   filled in later milestones
   api/  app/                       backend and dashboard (M4, M5)
-  data_store/                      schemas/ and admin_logs/ (real entries, git ignored)
-  artifacts/  reports/  docs/  tests/  scripts/
+  data_store/                      calendar_future.csv, schemas/, admin_logs/ (git ignored)
+  artifacts/                       processed, timeseries, nltk_data (git ignored)
+  reports/  docs/  tests/  scripts/
 ```
 
 ## Setup (PowerShell)
@@ -34,6 +42,13 @@ Copy-Item .env.example .env   # then edit .env
 ## Run
 
 ```powershell
-python -m feedforward.data.profile   # profile every dataset
-pytest                               # tests
+python -m feedforward.data.profile           # profile every dataset
+python -m feedforward.data.preprocess        # normalise tables to artifacts/processed
+python -m feedforward.data.cleaning          # clean the raw kitchen file, write the log
+python -m feedforward.data.calendar_future   # data_store/calendar_future.csv
+python -m feedforward.data.timeseries        # panel, windows, registry (run cleaning first)
+python -m feedforward.data.inventory_features
+python -m feedforward.data.nlp_report        # reports/nlp_normalisation_report.md
+python -m feedforward.export_code            # docs/code_bundle_preprocessing.md
+pytest
 ```

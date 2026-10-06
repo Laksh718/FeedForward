@@ -1,0 +1,19 @@
+{
+  "rows_in": 15760,
+  "duplicates_dropped": 15,
+  "dish_names_changed": 47,
+  "dish_names_needing_review": 0,
+  "attendance_repaired": 62,
+  "students_present_repaired": 62,
+  "leftover_missing": 31,
+  "leftover_negative": 7,
+  "consistency_violations": 0,
+  "demand_outliers_flagged": 66,
+  "rows_out": 15745,
+  "ground_truth_comparison": {
+    "same_row_count": true,
+    "columns_with_differences": {
+      "leftover_kg": 1
+    }
+  }
+}

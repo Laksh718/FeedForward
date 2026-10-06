@@ -1,0 +1,117 @@
+"""Build the model datasets in artifacts/timeseries/ and the feature registry in reports/.
+
+(a) panel: one row per date, slot and dish with features and the demand target
+(b) sequence windows: 21 days of history per dish and slot, for RNN, LSTM or GRU models
+(c) slot attendance series
+(d) day level totals
+"""
+
+import numpy as np
+import pandas as pd
+
+from feedforward import config as C
+from feedforward.data.cleaning import clean_kitchen
+from feedforward.data.feature_registry import BANNED_INPUTS, BANNED_REGISTRY, FEATURE_COLUMNS, LAGS, REGISTRY
+from feedforward.data.features import build_features, menu_rows_for
+from feedforward.data.loaders import load_table
+from feedforward.data.preprocess import normalise_ids
+from feedforward.data.splits import assign_split, regime
+
+SEQ_CHANNELS = ["log_demand", "rate", "leftover_rate", "unmet_rate", "served"]
+AUDIT_COLS = ["prepared_qty", "topup_qty", "consumed_qty", "unmet_qty", "leftover_qty", "attendance"]
+
+
+def load_clean_history() -> pd.DataFrame:
+    """Cleaned kitchen history (from the raw file) with the demand target added."""
+    path = C.PROCESSED_DIR / "kitchen_clean.parquet"
+    if path.exists():
+        hist = pd.read_parquet(path)
+    else:
+        hist, _ = clean_kitchen(load_table("kitchen_history_raw"), normalise_ids(load_table("dishes")))
+    hist["demand_qty"] = hist["consumed_qty"] + hist["unmet_qty"]
+    return hist
+
+
+def build_panel(history: pd.DataFrame, dishes: pd.DataFrame, menu: pd.DataFrame) -> pd.DataFrame:
+    """Panel table: features, target (demand_qty), audit columns, split and regime."""
+    dates = pd.DatetimeIndex(sorted(history["date"].unique()))
+    targets = menu_rows_for(dates, menu).merge(history[["date", "meal_slot", "dish_id"]],
+                                               on=["date", "meal_slot", "dish_id"], how="inner")
+    panel = build_features(targets, history, dishes)
+    panel = panel.merge(history[["date", "meal_slot", "dish_id", "demand_qty", *AUDIT_COLS]],
+                        on=["date", "meal_slot", "dish_id"], how="left")
+    panel["split"] = assign_split(panel["date"])
+    panel["regime"] = regime(panel)
+    return panel.sort_values(["date", "meal_slot", "dish_id"]).reset_index(drop=True)
+
+
+def build_windows(panel: pd.DataFrame, history: pd.DataFrame) -> tuple[dict, pd.DataFrame]:
+    """Sequence windows: 21 days of past channels ending 7 days before the target day."""
+    h = history.copy()
+    h["log_demand"] = np.log1p(h["demand_qty"])
+    h["rate"] = h["demand_qty"] / h["attendance"]
+    h["leftover_rate"] = h["leftover_qty"] / (h["prepared_qty"] + h["topup_qty"]).clip(lower=1)
+    h["unmet_rate"] = h["unmet_qty"] / h["demand_qty"].clip(lower=1)
+    h["served"] = 1.0
+    series_id = {k: i for i, k in enumerate(sorted(set(zip(h["meal_slot"], h["dish_id"], strict=True))))}
+    start = h["date"].min()
+    pad, n_days = C.SEQ_LOOKBACK + min(LAGS), (h["date"].max() - start).days + 1
+    grid = np.zeros((len(series_id), n_days + pad, len(SEQ_CHANNELS)), dtype=np.float32)
+    sid = [series_id[k] for k in zip(h["meal_slot"], h["dish_id"], strict=True)]
+    day = (h["date"] - start).dt.days.to_numpy() + pad
+    grid[sid, day] = h[SEQ_CHANNELS].to_numpy(dtype=np.float32)
+
+    p_sid = np.array([series_id[k] for k in zip(panel["meal_slot"], panel["dish_id"], strict=True)])
+    p_day = (panel["date"] - start).dt.days.to_numpy() + pad
+    first = p_day - min(LAGS) - C.SEQ_LOOKBACK + 1   # window covers t-27 .. t-7
+    offsets = np.arange(C.SEQ_LOOKBACK)
+    x_seq = grid[p_sid[:, None], first[:, None] + offsets[None, :]]
+    arrays = {"x_seq": x_seq, "x_cov": panel[FEATURE_COLUMNS].to_numpy(dtype=np.float32),
+              "y": panel["demand_qty"].to_numpy(dtype=np.float32),
+              "feature_names": np.array(FEATURE_COLUMNS), "channels": np.array(SEQ_CHANNELS)}
+    index = panel[["date", "meal_slot", "dish_id", "dish_idx", "split", "regime"]].copy()
+    return arrays, index
+
+
+def attendance_series(history: pd.DataFrame) -> pd.DataFrame:
+    """One row per date and slot: people who ate, plus those present on campus."""
+    return history.groupby(["date", "meal_slot"], as_index=False).agg(
+        attendance=("attendance", "first"), students_present=("students_present", "first"),
+        enrolled=("enrolled", "first"))
+
+
+def day_totals(history: pd.DataFrame) -> pd.DataFrame:
+    """Total demand per date and slot over all dishes (a choice group counts each alternative)."""
+    return history.pivot_table(index="date", columns="meal_slot", values="demand_qty", aggfunc="sum").reset_index()
+
+
+def registry_markdown() -> str:
+    """Feature registry as a markdown table (name, group, definition, leakage safe)."""
+    rows = ["| Feature | Group | Definition | Leakage safe |", "|---|---|---|---|"]
+    rows += [f"| {f.name} | {f.group} | {f.definition} | {'yes' if f.leakage_safe else 'no'} |"
+             for f in REGISTRY + BANNED_REGISTRY]
+    return "# Feature registry\n\nGenerated by `python -m feedforward.data.timeseries`.\n\n" + "\n".join(rows) + "\n"
+
+
+def main() -> None:
+    """Build and save every dataset."""
+    history = load_clean_history()
+    dishes = pd.read_parquet(C.PROCESSED_DIR / "dishes.parquet")
+    menu = pd.read_parquet(C.PROCESSED_DIR / "weekly_menu.parquet")
+    panel = build_panel(history, dishes, menu)
+    assert not (set(FEATURE_COLUMNS) & BANNED_INPUTS), "a banned column is in the feature list"
+    assert not panel[FEATURE_COLUMNS].isna().any().any(), "NaN in model inputs"
+    arrays, index = build_windows(panel, history)
+    C.TIMESERIES_DIR.mkdir(parents=True, exist_ok=True)
+    panel.to_parquet(C.TIMESERIES_DIR / "panel.parquet", index=False)
+    np.savez_compressed(C.TIMESERIES_DIR / "windows.npz", **arrays)
+    index.to_parquet(C.TIMESERIES_DIR / "windows_index.parquet", index=False)
+    attendance_series(history).to_parquet(C.TIMESERIES_DIR / "attendance_series.parquet", index=False)
+    day_totals(history).to_parquet(C.TIMESERIES_DIR / "day_totals.parquet", index=False)
+    (C.REPORTS_DIR / "feature_registry.md").write_text(registry_markdown(), encoding="utf-8")
+    print(f"panel {panel.shape}, windows {arrays['x_seq'].shape}, features {len(FEATURE_COLUMNS)}")
+    print(panel["split"].value_counts().to_dict(), panel["regime"].value_counts().to_dict())
+
+
+if __name__ == "__main__":
+    main()
