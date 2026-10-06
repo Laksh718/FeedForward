@@ -97,7 +97,7 @@ export async function ask(question) {
   emit();
   try {
     const r = await api.post("/chat", { question: text, date: state.date, meal_slot: state.slot, scope: state.scope, overrides: state.overrides });
-    state.chat.push({ role: "bot", text: r.answer });
+    state.chat.push({ role: "bot", text: r.answer, source: r.source });
   } catch (e) {
     const missing = e.status === 404 || e.status === 405;
     state.chat.push({ role: "err", text: missing

@@ -7,7 +7,7 @@ the final decision.
 **Data caveat:** the kitchen history is SIMULATED on a real menu, a real calendar and real weather.
 No real world savings are claimed. The February 2026 weather rows are unverified copies of March.
 
-## Folder tree (after M5)
+## Folder tree (after M6)
 
 ```
 FeedForward/
@@ -26,7 +26,7 @@ FeedForward/
                                    summary, forecast_service
     plugins/                       surplus_detector_stub.py, gan_extra_data.py (teammates plug in here)
     admin/review_log.py            Approve / Send back snapshots (more admin code in M7)
-    copilot/                       filled in M6
+    copilot/                       nlu, context_builder, prompts, llm, templates, explain, compare_prompts
   api/                             FastAPI: main.py, deps.py, schemas.py, services.py, routes/
   app/                             dashboard: index.html, css/ (base, service, desk), js/ (state, api, charts, views)
   data_store/                      calendar_future.csv, schemas/, admin_logs/ (git ignored)
@@ -70,6 +70,14 @@ Start the API (`uvicorn api.main:app --reload`) and open http://127.0.0.1:8000/.
 The bar at the top switches between **Service board** (View A) and **Forecast desk** (View B). Click a day in either chart to see that day.
 Browser test (needs Node 22 and Edge, API on port 8765): `node tests/ui_smoke.mjs`. Screenshots of both views are in `docs/design/`.
 
+## Copilot (M6)
+
+Ask in the panel on either view, or call `POST /api/chat`. Flow: rules read the question (`copilot/nlu.py`), plain Python computes the
+figures (`context_builder.py`), one call to the language model writes the explanation from those figures (`explain.py`), and a check
+makes sure every figure in the answer comes from the data. With no key, no internet, or a failed check, a standard wording is used.
+Put `GROQ_API_KEY` (and check `GROQ_MODEL`) in `.env` to turn the language model on. The copilot only explains: it never changes a
+quantity or approves a plan. See `docs/prompt_scenarios.md`; `python -m feedforward.copilot.compare_prompts` writes `reports/prompt_comparison.md`.
+
 ## API (M4)
 
 | Endpoint | What it does |
@@ -81,6 +89,7 @@ Browser test (needs Node 22 and Edge, API on port 8765): `node tests/ui_smoke.mj
 | POST /api/review | Approve or Send back, stored with a forecast snapshot in data_store/admin_logs/forecast_log.csv |
 | GET /api/review?date=&slot= | latest decision |
 | GET /api/dishes, /api/ingredients | catalogues |
+| POST /api/chat | one explanation for a question: answer text, source (llm, template or rules), intent, the figures used |
 
-Admin and chat endpoints arrive with the admin log and copilot milestones. Errors always say what happened and how to fix it.
+Admin endpoints arrive with the admin log milestone. Errors always say what happened and how to fix it.
 

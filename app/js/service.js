@@ -1,7 +1,7 @@
 // View A: Service board.
 import { bindChart, chartService } from "./charts.js";
 import { ask, review, setAdjusted, setDate, setEditing, setScope, setSlot, state, subscribe } from "./state.js";
-import { SLOTS, cap, esc, fmt, riskLabel, weekdayName } from "./util.js";
+import { SLOTS, SOURCE_NOTE, cap, esc, fmt, riskLabel, weekdayName } from "./util.js";
 import { mountWhatIf } from "./whatif.js";
 
 const CHIPS = ["Explain the range", "What if it rains?", "Summarise the week"];
@@ -124,7 +124,7 @@ export function mountService(root) {
       bindChart(chart, s.week, (d) => d !== s.date && setDate(d));
     }
     const log = q("#sv-log");
-    log.innerHTML = s.chat.length ? s.chat.map((m) => `<div class="bubble ${m.role}">${esc(m.text)}</div>`).join("") + (s.chatBusy ? `<div class="bubble bot">Working on it</div>` : "")
+    log.innerHTML = s.chat.length ? s.chat.map((m) => `<div class="bubble ${m.role}">${esc(m.text)}${SOURCE_NOTE[m.source] ? `<span class="src">${SOURCE_NOTE[m.source]}</span>` : ""}</div>`).join("") + (s.chatBusy ? `<div class="bubble bot">Working on it</div>` : "")
       : `<div class="bubble bot">Ask why a dish is above or below the usual plan, or what a change would do. I only use the numbers on this page.</div>`;
     log.scrollTop = log.scrollHeight;
   });

@@ -68,8 +68,9 @@ await waitFor("document.querySelector('#sv-status').textContent.length > 0", "ap
 check("A approve gives a confirmation", true, await ev("document.querySelector('#sv-status').textContent"));
 
 await ev("document.querySelector('#sv-q').value = 'Why is this high?'; document.querySelector('#sv-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))");
-await waitFor("document.querySelector('#sv-log .bubble.err, #sv-log .bubble.bot:not(:only-child)')", "chat reply");
-check("A copilot shows a reply or a clear error", true, await ev("document.querySelector('#sv-log').lastElementChild.textContent.slice(0, 110)"));
+await waitFor("document.querySelector('#sv-log').lastElementChild.textContent.includes('One caution') || document.querySelector('#sv-log .bubble.err')", "chat reply");
+const reply = await ev("document.querySelector('#sv-log').lastElementChild.textContent");
+check("A copilot answers in the three part format", reply.includes("Short answer:") && reply.includes("One caution:"), reply.slice(0, 90));
 
 await ev("document.querySelector('#sv-showall').click()");
 await waitFor("document.querySelectorAll('#sv-tickets .ticket').length > 4", "show all dishes");
@@ -87,8 +88,9 @@ for (const nav of ["whatif", "risk", "approvals", "copilot", "forecast"]) {
   check(`B nav ${nav}`, await ev(`document.querySelector('[data-nav=${nav}]').getAttribute('aria-current') === 'page'`));
 }
 await ev("document.querySelector('#dk-q').value = 'Why is Tuesday so high?'; document.querySelector('#dk-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))");
-await waitFor("document.querySelector('#dk-answer.err, #dk-answer p:not(.empty-note):not(.q)')", "desk answer");
-check("B copilot answer area", true, await ev("document.querySelector('#dk-answer').textContent.slice(0, 110)"));
+await waitFor("document.querySelector('#dk-answer').textContent.includes('One caution') || document.querySelector('#dk-answer.err')", "desk answer");
+const deskReply = await ev("document.querySelector('#dk-answer').textContent");
+check("B copilot answer area shows an answer", deskReply.includes("Short answer:"), deskReply.slice(0, 90));
 
 const small = await ev("[...document.querySelectorAll('#view-desk button, #view-desk select, #view-desk input:not([type=range])')].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 43.5).map((e) => (e.id || e.textContent.slice(0, 14)) + ':' + Math.round(e.getBoundingClientRect().height)).join(' | ')");
 check("B every visible control is at least 44px tall", small === "", small);

@@ -21,7 +21,9 @@ Slide deck topics are named by subject.
 | Sentence boundary detection | Text segmentation | `nlp_entities.split_sentences` | Does not split at "Spl." |
 | Bag of words, TF-IDF, cosine similarity | Text representation | `text_features.py` | Dish similarity, dish text embedding |
 | SVD embedding | Dimensionality reduction | `text_features.DishTextModel` | 8 numbers per dish, used as input features |
-| NLU and NLG | Dialogue systems | `copilot/nlu.py` and `copilot/explain.py` (M6) | Rules understand, the LLM only writes the explanation |
+| NLU and NLG | Dialogue systems | `copilot/nlu.py` (understand) and `copilot/explain.py`, `templates.py` (generate) | Rules understand, the language model only writes the explanation; see `docs/prompt_scenarios.md` |
+| Prompt engineering: role, grounding, few shot examples, output format, low temperature | Prompting | `copilot/prompts.py` (PROMPT_V1 and PROMPT_V2), `copilot/compare_prompts.py` | V1 against V2 on five use case scenarios in `reports/prompt_comparison.md` |
+| Hallucination control | LLM limitations | `copilot/explain.ungrounded_numbers` | Every figure in an answer must appear in the context, otherwise the template answer is shown |
 
 ## Deep learning and generative (M3)
 
@@ -38,7 +40,7 @@ Slide deck topics are named by subject.
 | Generative versus discriminative | Generative models | `models/cvae.py` (models p(demand given conditions)) against `GBMQuantile` (predicts quantiles directly) | Both give ranges, and the report compares them honestly |
 | Reconstruction error as an anomaly signal | Autoencoder anomaly detection | `admin/validation.py` (M7) | Entered values far outside the forecast range raise a typo warning |
 | Sequence models: RNN, LSTM, GRU and gates | Recurrent networks | `data/timeseries.py` (21 day windows), `CVAEConfig(encoder="gru")`, `train --encoder gru` | Optional experiment. A GRU summarises the history; its update and reset gates decide what to keep or forget. Result: no gain over the MLP (see metrics_summary.md) |
-| Transformers and LLMs, attention | Transformers | `copilot/llm.py` (M6), `docs/` | The hosted LLM is only used to write explanations; attention lets it weigh which words in the question and the figures matter. No training |
+| Transformers and LLMs, attention | Transformers | `copilot/llm.py`, `docs/prompt_scenarios.md` | The hosted LLM is only used to write explanations; attention lets it weigh which words in the question and the figures matter. No training |
 
 ## Not applicable, and why
 

@@ -54,3 +54,9 @@ export function showTip(evt, html) {
   tip.style.top = `${evt.clientY + 14}px`;
 }
 export function hideTip() { if (tip) tip.hidden = true; }
+
+// Where an answer came from, in plain words (shown under each copilot answer).
+export const SOURCE_NOTE = {
+  llm: "Written by the language model from the figures on this page.",
+  template: "Standard wording from the figures on this page (language model not used).",
+};

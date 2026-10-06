@@ -22,7 +22,8 @@ MEAL_SLOTS = {"breakfast": "breakfast", "lunch": "lunch", "snacks": "snacks", "s
               "dinner": "dinner", "supper": "dinner", "tiffin": "breakfast"}
 WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 RELATIVE_DAYS = {"today": 0, "tomorrow": 1}
-WEATHER_WORDS = {"rain": "Rain", "rainy": "Rain", "raining": "Rain", "drizzle": "Drizzle",
+WEATHER_WORDS = {"rain": "Rain", "rainy": "Rain", "raining": "Rain", "rains": "Rain", "rained": "Rain", "downpour": "Rain",
+                 "showers": "Drizzle", "drizzle": "Drizzle",
                  "thunder": "Thunder", "storm": "Thunder", "hot": "Hot", "heat": "Hot",
                  "fog": "Fog", "mist": "Mist", "haze": "Haze", "cloudy": "Partly Cloudy",
                  "dry": "Dry", "sunny": "Fair", "fair": "Fair"}

@@ -1,7 +1,7 @@
 // View B: Forecast desk.
 import { bindChart, chartDesk } from "./charts.js";
 import { ask, review, setDate, setDish, setScope, state, subscribe } from "./state.js";
-import { cap, esc, fmt, riskLabel, shortDate, weekdayName } from "./util.js";
+import { SOURCE_NOTE, cap, esc, fmt, riskLabel, shortDate, weekdayName } from "./util.js";
 import { mountWhatIf } from "./whatif.js";
 
 const ICONS = {
@@ -139,7 +139,7 @@ export function mountDesk(root) {
     const ans = q("#dk-answer");
     ans.className = `answer ${last?.role === "err" ? "err" : ""}`;
     ans.innerHTML = s.chatBusy ? `<p class="q">${esc(lastQ?.text ?? "")}</p><p>Working on it</p>`
-      : last ? `<p class="q">${esc(lastQ?.text ?? "")}</p><p>${esc(last.text)}</p>`
+      : last ? `<p class="q">${esc(lastQ?.text ?? "")}</p><p>${esc(last.text)}</p>${SOURCE_NOTE[last.source] ? `<p class="src">${SOURCE_NOTE[last.source]}</p>` : ""}`
         : `<p class="empty-note">Ask a question and the answer appears here. It only uses the figures on this page.</p>`;
   });
 }

@@ -37,3 +37,10 @@
 | 33 | The dish total row is labelled "Main dishes" (core) or "All dishes" depending on the Show all dishes switch | Honest label: the model forecasts main dishes with the CVAE, support dishes with a rate rule |
 | 34 | The Surplus risk panel says the risk is a simple first version | It is the stub for the teammate's detector |
 | 35 | Fonts load from Google Fonts with system fallbacks | Per the brief. Offline, the layout still works with system fonts |
+| 36 | The copilot answers the first question of a message and says so | Several questions in one message would need several answers; sentence splitting finds them, one is answered |
+| 37 | What the question asks decides the code that runs (intent and entities from rules). The language model never chooses | Keeps the system a simple explain pipeline and keeps the behaviour testable |
+| 38 | A what if the dashboard cannot try gets a fixed message listing what it can try | Better than guessing a change |
+| 39 | Every figure of 10 or more in a model answer must appear in the context JSON, otherwise the template answer is shown | Stops invented numbers. The context therefore carries differences and percentages already worked out |
+| 40 | The UI shows where an answer came from (language model or standard wording) | Honest about what wrote the text |
+| 41 | `reports/prompt_comparison.md` is only filled with real model answers when a key is present; otherwise it says the model columns were not run | No made up before and after evidence |
+| 42 | `tests/test_copilot.py` scans the whole project for the terms the review penalises (the list is in that test) | The review gives negative marks for them, so a slip fails the test instead of the review |

@@ -118,13 +118,28 @@ class ForecastService:
                          "is_choice": bool(r["is_choice"]), "p10": p10, "p50": p50, "p90": p90,
                          "recommended": int(rec[i]), "usual_plan": int(round(usual[i])),
                          "surplus_risk": self.detector.assess(float(usual[i]), p50, p90),
-                         "has_history": bool(r["n_lags"] > 0)})
+                         "has_history": bool(r["n_lags"] > 0),
+                         "last_week_demand": int(round(r["demand_lag_7"])) if r["has_lag_7"] else None,
+                         "two_weeks_ago_demand": int(round(r["demand_lag_14"])) if r["has_lag_14"] else None})
         rows.sort(key=lambda d: -d["recommended"])
         total = {k: int(sum(d[k] for d in rows)) for k in ("p10", "p50", "p90", "recommended", "usual_plan")}
         att = int(round(feats["expected_attendance"].iloc[0]))
         return {"date": str(day.date()), "meal_slot": slot, "expected_attendance": att,
-                "dishes": rows, "totals": total, "totals_note": TOTALS_NOTE,
+                "dishes": rows, "day_facts": self._day_facts(day, feats), "totals": total, "totals_note": TOTALS_NOTE,
                 "overrides_applied": ov.applied(), "notes": self._notes(day, rows)}
+
+    @staticmethod
+    def _day_facts(day: pd.Timestamp, feats: pd.DataFrame) -> dict:
+        """Plain facts about the day that the copilot may quote (all taken from the feature row)."""
+        r = feats.iloc[0]
+        return {"weekday": day.day_name(), "expected_attendance": int(round(r["expected_attendance"])),
+                "attendance_last_week": int(round(r["slot_att_lag_7"])) if r["slot_att_lag_7"] > 0 else None,
+                "attendance_two_weeks_ago": int(round(r["slot_att_lag_14"])) if r["slot_att_lag_14"] > 0 else None,
+                "exam_week": bool(r["university_exam_any"]), "formative_test": bool(r["formative_test_any"]),
+                "holiday": bool(r["tn_public_holiday"] or r["special_declared_holiday"]), "festival": bool(r["major_festival"]),
+                "students_mostly_away": bool(r["students_mostly_away"]), "temp_max_c": round(float(r["temp_max_c"]), 1),
+                "temp_min_c": round(float(r["temp_min_c"]), 1), "rain_level": int(round(r["rain_level"])),
+                "weather_is_assumed": bool(r["weather_assumed"])}
 
     def _notes(self, day: pd.Timestamp, rows: list[dict]) -> list[str]:
         """Plain language cautions about how far to trust the numbers."""
@@ -140,6 +155,6 @@ class ForecastService:
 
     def _empty(self, day, slot, ov) -> dict:
         """Response for a slot with no dishes on that day."""
-        return {"date": str(day.date()), "meal_slot": slot, "expected_attendance": 0, "dishes": [],
+        return {"date": str(day.date()), "meal_slot": slot, "expected_attendance": 0, "dishes": [], "day_facts": {},
                 "totals": dict.fromkeys(("p10", "p50", "p90", "recommended", "usual_plan"), 0), "totals_note": "",
                 "overrides_applied": ov.applied(), "notes": ["No dishes are on the menu for this slot and day."]}
