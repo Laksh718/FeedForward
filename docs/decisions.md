@@ -26,3 +26,7 @@
 | 22 | Usual plan uses consumed portions of the last two same weekdays plus 12 percent | What the manager sees. Checked against the data: the manager's real prepared quantity is on average 1.00 times this rule |
 | 23 | Weather noise (plus or minus 1.5 C, 10 percent rain level flips) is drawn once per date per epoch during CVAE training | All dishes of a day share one weather forecast |
 | 24 | Forecast quantiles are P10, P25, P50, P75, P90; the recommendation is P75 rounded to 5 (under 100) or 10 portions | Per the brief. The decision simulation shows P75 versus P50 and P90 so the trade off is visible |
+| 25 | `/api/plan` shows core dishes by default (`scope=core`), all dishes with `scope=all`; headline totals follow the scope | Core dishes are the ones the model forecasts with the CVAE; support dishes are bread, butter, chutney. The dashboard has a "Show all dishes" option |
+| 26 | `/api/review` recomputes the forecast on the server and stores it with the decision | The stored snapshot cannot be altered by the browser |
+| 27 | NLTK resources are never downloaded implicitly; only the pipeline entry points download | An implicit download made one test run take 48 minutes offline |
+| 28 | Chat and admin endpoints are added in their own milestones, not as empty stubs | No dead routes |

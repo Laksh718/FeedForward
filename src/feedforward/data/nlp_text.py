@@ -27,6 +27,8 @@ def setup_nltk(download: bool = True) -> dict[str, bool]:
     """Make NLTK resources available from artifacts/nltk_data. Never raises when offline."""
     if _available and not download:
         return _available
+    if download and _available and all(_available.values()):
+        return _available
     try:
         import nltk
     except ImportError:
@@ -36,7 +38,10 @@ def setup_nltk(download: bool = True) -> dict[str, bool]:
         nltk.data.path.insert(0, str(C.NLTK_DATA_DIR))
     for name, path in _RESOURCES.items():
         try:
-            nltk.data.find(path)
+            try:
+                nltk.data.find(path)
+            except LookupError:
+                nltk.data.find(path + ".zip")  # some corpora (wordnet) are used straight from their zip file
             _available[name] = True
         except LookupError:
             ok = False
@@ -52,7 +57,7 @@ def setup_nltk(download: bool = True) -> dict[str, bool]:
 def has(resource: str) -> bool:
     """True when an NLTK resource can be used."""
     if not _available:
-        setup_nltk()
+        setup_nltk(download=False)  # never reach for the network implicitly; setup_nltk() is called by the pipelines
     return _available.get(resource, False)
 
 

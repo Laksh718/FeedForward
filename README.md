@@ -7,7 +7,7 @@ the final decision.
 **Data caveat:** the kitchen history is SIMULATED on a real menu, a real calendar and real weather.
 No real world savings are claimed. The February 2026 weather rows are unverified copies of March.
 
-## Folder tree (after M3)
+## Folder tree (after M4)
 
 ```
 FeedForward/
@@ -25,8 +25,10 @@ FeedForward/
     models/                        prep, attendance, baselines, cvae, bundle, train, evaluate, metrics, plots,
                                    summary, forecast_service
     plugins/                       surplus_detector_stub.py, gan_extra_data.py (teammates plug in here)
-    admin/ copilot/                filled in later milestones
-  api/  app/                       backend and dashboard (M4, M5)
+    admin/review_log.py            Approve / Send back snapshots (more admin code in M7)
+    copilot/                       filled in M6
+  api/                             FastAPI: main.py, deps.py, schemas.py, services.py, routes/
+  app/                             dashboard (M5)
   data_store/                      calendar_future.csv, schemas/, admin_logs/ (git ignored)
   artifacts/                       processed, timeseries, nltk_data (git ignored)
   reports/  docs/  tests/  scripts/
@@ -58,4 +60,21 @@ python -m feedforward.models.train --final   # deployment model on train + valid
 python -m feedforward.models.train --encoder gru   # optional GRU experiment
 python -m feedforward.export_code            # docs/code_bundle_preprocessing.md
 pytest
+
+uvicorn api.main:app --reload             # API at http://127.0.0.1:8000/api  (docs at /docs)
 ```
+
+## API (M4)
+
+| Endpoint | What it does |
+|---|---|
+| GET /api/health | status, project today, default plan date, data source chip |
+| GET /api/plan?date=&slot=&scope=core or all | per dish range, recommended, usual plan, surplus risk, headline sentences |
+| GET /api/week?slot=&start=&dish_id= | 7 forecast days with range, plus the 7 days before as actuals |
+| POST /api/whatif | plan with changes (attendance, exam week, festival, weather ...) next to the unchanged plan |
+| POST /api/review | Approve or Send back, stored with a forecast snapshot in data_store/admin_logs/forecast_log.csv |
+| GET /api/review?date=&slot= | latest decision |
+| GET /api/dishes, /api/ingredients | catalogues |
+
+Admin and chat endpoints arrive with the admin log and copilot milestones. Errors always say what happened and how to fix it.
+

@@ -28,7 +28,8 @@ SEED = 42
 # Project calendar.
 HISTORY_START = "2025-10-06"
 HISTORY_END = "2026-10-05"
-TODAY = "2026-10-06"
+TODAY = "2026-10-06"            # the project's "today"; override with FEEDFORWARD_TODAY in .env
+FORECAST_LAST_DAY = "2027-01-31"  # last date covered by data_store/calendar_future.csv
 
 # Chronological splits (inclusive dates).
 TRAIN_END = "2026-06-17"
