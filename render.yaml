@@ -14,7 +14,7 @@ services:
       # Asked for when the blueprint is created; never stored in the repository.
       - key: ADMIN_PIN         # a long random PIN; the Daily log stays switched off until it is set
         sync: false
-      - key: GROQ_API_KEY      # optional: without it the copilot answers in its template wording
+      - key: GEMINI_API_KEY    # optional: without it the copilot answers in its template wording
         sync: false
-      - key: GROQ_MODEL
-        value: openai/gpt-oss-20b
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest
