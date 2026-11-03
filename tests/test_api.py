@@ -104,3 +104,22 @@ def test_cors_lets_the_static_site_call_the_server(monkeypatch):
         r = client.options("/api/admin/day", headers={**pre, "Access-Control-Request-Method": method})
         assert r.status_code == 200 and r.headers["access-control-allow-origin"] == "https://laksh718.github.io"
     assert "access-control-allow-origin" not in client.get("/api/health", headers={"Origin": "https://evil.example"}).headers
+
+
+def test_whatif_impact_dish_by_dish_and_ingredients(client):
+    r = client.post("/api/whatif", json={"date": "2026-10-08", "meal_slot": "lunch", "scope": "all",
+                                         "overrides": {"attendance_change_pct": 20}}).json()
+    im = r["impact"]
+    assert sum(d["change"] for d in im["dishes"]) == r["difference"]["recommended"]
+    assert im["attendance"]["after"] > im["attendance"]["before"] == r["baseline_expected_attendance"]
+    assert im["dishes"][0]["change"] >= im["dishes"][-1]["change"] or abs(im["dishes"][0]["change"]) >= abs(im["dishes"][-1]["change"])
+    rice = next(i for i in im["ingredients"] if i["ingredient"] == "rice")
+    assert rice["after_kg"] > rice["before_kg"] and rice["pack_kg"] == 25 and rice["packs_after"] >= rice["packs_before"]
+    assert im["ingredient_totals"]["change_kg"] > 0 and im["ingredient_totals"]["ingredients_less"] == 0
+    assert any("no ingredient prices" in n for n in im["notes"])
+
+
+def test_whatif_impact_ingredient_kg_follow_the_recipes():
+    from feedforward.models.whatif_impact import ingredient_kg
+    kg = ingredient_kg([{"dish_id": "D002", "recommended": 1000}])   # coffee: 80 g milk and 8 g sugar a portion
+    assert round(kg["milk"], 1) == 80.0 and round(kg["sugar"], 1) == 8.0
