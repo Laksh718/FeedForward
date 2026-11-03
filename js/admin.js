@@ -1,5 +1,5 @@
 // Daily log (admin): PIN, then a form in five sections, recent entries, CSV export and forecast versus actual.
-import { STATIC, api, auth } from "./api.js";
+import { REMOTE, STATIC, api, auth } from "./api.js";
 import { liquid } from "./fx.js";
 import { icon } from "./icons.js";
 import { SLOTS, WEATHER_TYPES, cap, esc, fmt } from "./util.js";
@@ -242,16 +242,22 @@ export function mountAdmin(root) {
   }
   const warnHtml = (ws) => (ws.length ? `<div class="ad-msg warn"><strong>${ws.length} warning${ws.length > 1 ? "s" : ""}</strong>${list(ws.map((w) => w.message))}</div>` : "");
 
+  // Check and Save both write the message box; only the latest click may, so a slow Check cannot hide "Saved".
+  let msgTurn = 0;
   $("#ad-check").addEventListener("click", async () => {
+    const mine = ++msgTurn;
     try {
       const r = await api.post("/admin/validate", payload());
+      if (mine !== msgTurn) return;
       $("#ad-msg").innerHTML = r.warnings.length ? warnHtml(r.warnings) : `<div class="ad-msg ok">No problems found. Nothing looks unusual.</div>`;
-    } catch (e) { showMsg(errText(e), "bad"); }
+    } catch (e) { if (mine === msgTurn) showMsg(errText(e), "bad"); }
   });
   $("#ad-save").addEventListener("click", async () => {
+    const mine = ++msgTurn;
     try {
       const r = await api.post("/admin/day", payload());
       const c = r.saved;
+      if (mine !== msgTurn) { refreshSide(); return; }
       $("#ad-msg").innerHTML = `<div class="ad-msg ok" role="status"><strong>Saved ${esc($("#ad-date").value)}.</strong> ${c.day_context} day context, ${c.attendance} attendance, ${c.kitchen_log} dish rows and ${c.ingredient_usage} ingredient rows. Forecasts now use this day.</div>${warnHtml(r.warnings)}`;
       refreshSide();
     } catch (e) { showMsg(errText(e), "bad"); }
@@ -351,7 +357,7 @@ export function mountAdmin(root) {
     } catch (e) { showMsg(errText(e), "bad"); }
   }));
 
-  if (STATIC) {   // online demo: entries are saved to the server's files, so there is nothing to unlock
+  if (STATIC && !REMOTE) {   // snapshot only: entries are saved to the server's files, so there is nothing to unlock
     $("#ad-gate-t").textContent = "Needs the FeedForward server";
     $("#ad-gate").querySelector(".ad-help").textContent = "The Daily log saves real entries to files on the FeedForward server, "
       + "and this online demo is a read only snapshot. Run FeedForward locally (see the README on GitHub) to log days, import CSV files "
