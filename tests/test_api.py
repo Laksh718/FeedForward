@@ -94,3 +94,13 @@ def test_catalogues(client):
     menu = client.get("/api/dishes", params={"date": "2026-10-07", "slot": "lunch"}).json()
     assert 0 < menu["count"] < 151
     assert client.get("/api/ingredients").json()["count"] == 70
+
+
+def test_cors_lets_the_static_site_call_the_server(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", "https://laksh718.github.io")
+    client = TestClient(create_app())
+    pre = {"Origin": "https://laksh718.github.io", "Access-Control-Request-Headers": "content-type,x-admin-pin"}
+    for method in ("POST", "DELETE"):
+        r = client.options("/api/admin/day", headers={**pre, "Access-Control-Request-Method": method})
+        assert r.status_code == 200 and r.headers["access-control-allow-origin"] == "https://laksh718.github.io"
+    assert "access-control-allow-origin" not in client.get("/api/health", headers={"Origin": "https://evil.example"}).headers

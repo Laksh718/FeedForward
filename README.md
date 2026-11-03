@@ -156,14 +156,22 @@ GitHub Pages serves files only, so it cannot run the Python model. `scripts/buil
 a copy of `app/`. A marker in the built `index.html` switches the page into static mode (`app/js/static-api.js`), which reads the
 snapshot instead of calling `/api`. Served by uvicorn, the page behaves exactly as before.
 
-| In the online demo | What it holds |
-|---|---|
-| Service board, Forecast desk | every date from 2025-10-06 to 2027-01-31, every slot, main dishes and all dishes, the week chart per dish |
-| Calendar | every month, as cross-checked against the live holiday calendar when the snapshot was built |
-| What if | one setting at a time (attendance, special day or weather) for the 7 days from the project's tomorrow |
-| Copilot | the suggested questions for those 7 days, in the template wording (no language model) |
-| Approve, Send back | saved in the visitor's own browser only |
-| Daily log | off: it saves real entries to the server's files |
+The published page also knows the deployed server on Render (a `feedforward-api` meta tag, set with `--api-url`; see "Deploy the full
+version on Render"). The snapshot answers instantly what it holds; everything else goes to that server, so the online site has the
+full feature set while the server is up, and falls back to the snapshot's behaviour when it is not:
+
+| In the online site | From the snapshot | From the server (Render) |
+|---|---|---|
+| Service board, Forecast desk | every date from 2025-10-06 to 2027-01-31, every slot, main dishes and all dishes, the week chart per dish | other weeks |
+| Calendar | every month, as cross-checked against the live holiday calendar when the snapshot was built | |
+| What if | one setting at a time for the 7 days from the project's tomorrow | combined settings, any date |
+| Copilot | if the server is down: the suggested questions for those 7 days, in the template wording | every question, answered by Gemini |
+| Approve, Send back | if the server is down: saved in the visitor's own browser only | saved in the server's review log |
+| Daily log | off when there is no server | the full Daily log, behind the PIN |
+
+The server only accepts these calls because its `CORS_ORIGINS` includes `https://laksh718.github.io` (set in `render.yaml`). A free
+server sleeps when idle, so the page sends it a wake up call as soon as it opens. Add `?remote=off` to the address to use the
+snapshot alone, or build with `--api-url ""` to leave the server out.
 
 Local Daily log entries and reviews never go into the snapshot (the build uses an empty admin folder), and no API key is used.
 
@@ -191,6 +199,7 @@ the Daily log), deploy the repository as a container. The `Dockerfile` installs 
    or in the dashboard choose **New** > **Blueprint** and pick this repository. If the repository is private, let Render's GitHub app see it.
 3. Render reads `render.yaml` (a free Docker web service, health check on `/api/health`, redeploy on every push to `main`) and asks for:
    - `ADMIN_PIN`: a long random PIN, not 1234 (anyone with the link can reach the Daily log page). Until it is set, the Daily log is off.
+   - `CORS_ORIGINS` is filled in from `render.yaml` (`https://laksh718.github.io`), so the GitHub Pages site can call the server.
    - `GEMINI_API_KEY`: optional. Use a separate key for this deployment, because every visitor's copilot question uses it. Without a key
      the copilot answers in its template wording.
 4. Apply. The first build takes several minutes (torch); the app is then served at the `*.onrender.com` address Render shows.

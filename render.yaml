@@ -13,6 +13,8 @@ services:
     sync: false
   - key: GEMINI_MODEL
     sync: false
+  - key: CORS_ORIGINS
+    value: https://laksh718.github.io
   region: singapore
   healthCheckPath: /api/health
   dockerContext: .
