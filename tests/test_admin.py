@@ -30,6 +30,7 @@ def isolated(tmp_path, monkeypatch):
     monkeypatch.setattr(C, "ADMIN_LOG_DIR", tmp_path)
     monkeypatch.setattr(review_log, "LOG_PATH", tmp_path / "forecast_log.csv")
     monkeypatch.setenv("ADMIN_PIN", "1234")
+    monkeypatch.setenv("GEMINI_API_KEY", "")
     monkeypatch.setenv("GROQ_API_KEY", "")
     return tmp_path
 
