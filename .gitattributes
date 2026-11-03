@@ -1,0 +1,14 @@
+# Keep line endings LF in the repository whatever the platform (the project is edited on Windows and macOS).
+* text=auto eol=lf
+*.bat text eol=crlf
+
+# Binary data and images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.parquet binary
+*.npz binary
+*.pt binary
+*.joblib binary
