@@ -57,9 +57,8 @@ export function showTip(evt, html) {
 }
 export function hideTip() { if (tip) tip.hidden = true; }
 
-// Where an answer came from, in plain words (shown under each copilot answer).
+// Where an answer came from, in plain words (shown under copilot answers that did not come from the language model).
 export const SOURCE_NOTE = {
-  llm: "Written by the language model from the figures on this page.",
   template: "Standard wording from the figures on this page (language model not used).",
   demo: "Online demo note (the copilot itself runs on the FeedForward server).",
 };
