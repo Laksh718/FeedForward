@@ -14,7 +14,7 @@ from feedforward import config as C
 
 load_dotenv(C.PROJECT_ROOT / ".env")
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-GEMINI_DEFAULT_MODEL = "gemini-flash-latest"   # Google's alias for the current Flash model; pin one with GEMINI_MODEL
+GEMINI_DEFAULT_MODEL = "gemini-3.5-flash-lite"  # fast (about 2 to 5 s here) and enough for a short rewording; change with GEMINI_MODEL
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_DEFAULT_MODEL = "openai/gpt-oss-20b"   # change with GROQ_MODEL; check the name in your Groq console
 TEMPERATURE = 0.2                           # low, so the same question gives nearly the same answer

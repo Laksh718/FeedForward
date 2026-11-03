@@ -17,4 +17,4 @@ services:
       - key: GEMINI_API_KEY    # optional: without it the copilot answers in its template wording
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-flash-latest
+        value: gemini-3.5-flash-lite
