@@ -1,0 +1,20 @@
+# Render blueprint: the full FeedForward server (API + dashboard) on Render's free web service.
+# New > Blueprint in the Render dashboard (or the "Deploy to Render" link in the README) reads this file.
+services:
+  - type: web
+    name: feedforward
+    runtime: docker
+    plan: free
+    region: singapore          # closest to the kitchen; any Render region works
+    branch: main
+    autoDeploy: true           # every push to main redeploys
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      # Asked for when the blueprint is created; never stored in the repository.
+      - key: ADMIN_PIN         # a long random PIN; the Daily log stays switched off until it is set
+        sync: false
+      - key: GROQ_API_KEY      # optional: without it the copilot answers in its template wording
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
