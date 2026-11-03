@@ -1,5 +1,7 @@
 // Daily log (admin): PIN, then a form in five sections, recent entries, CSV export and forecast versus actual.
 import { STATIC, api, auth } from "./api.js";
+import { liquid } from "./fx.js";
+import { icon } from "./icons.js";
 import { SLOTS, WEATHER_TYPES, cap, esc, fmt } from "./util.js";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -20,15 +22,15 @@ const num = (v) => (v === "" || v === null || v === undefined ? null : Number(v)
 const opts = (obj, blank) => (blank ? `<option value="">${blank}</option>` : "") + Object.entries(obj).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
 
 const SKELETON = `
-  <header><h1>Daily log</h1><p class="ad-sub">Real entries are saved so the next forecasts can learn from them.</p></header>
-  <section class="ad-card" id="ad-gate" aria-labelledby="ad-gate-t"><h2 id="ad-gate-t">Admin PIN</h2>
+  <header class="ad-top"><p class="eyebrow">${icon("log")}Admin</p><h1>Daily log</h1><p class="ad-sub">Real entries are saved so the next forecasts can learn from them.</p></header>
+  <section class="ad-card glass ad-gate" id="ad-gate" aria-labelledby="ad-gate-t"><span class="ad-gate-icon">${icon("shield")}</span><h2 id="ad-gate-t">Admin PIN</h2>
     <p class="ad-help">The PIN is set as ADMIN_PIN in the .env file.</p>
     <form id="ad-pin-form" class="ad-actions" style="margin-top:0"><label class="sr-only" for="ad-pin">PIN</label>
-      <input id="ad-pin" type="password" autocomplete="off" placeholder="PIN" style="min-height:44px;padding:0 12px;border:1px solid #B7C2B8;border-radius:8px">
+      <input id="ad-pin" class="ad-pin-input" type="password" autocomplete="off" placeholder="PIN">
       <button class="btn btn-primary" type="submit">Unlock</button></form><div id="ad-gate-msg"></div></section>
   <div id="ad-app" hidden>
     <div class="ad-stats" id="ad-stats"></div>
-    <section class="ad-card" aria-labelledby="ad-s1"><h2 id="ad-s1">1. Day context</h2>
+    <section class="ad-card glass" aria-labelledby="ad-s1"><h2 id="ad-s1">1. Day context</h2>
       <p class="ad-help">Past dates can be filled in later. Future dates take expected weather and special day information only.</p>
       <div class="ad-grid">
         <div class="ad-field"><label for="ad-date">Date</label><input id="ad-date" type="date"></div>
@@ -49,26 +51,26 @@ const SKELETON = `
       </div></section>
     <div id="ad-future" class="ad-note" hidden>This date is in the future, so only the day context above is saved. Enter attendance, dishes and ingredients after the day.</div>
     <div id="ad-past">
-    <section class="ad-card" aria-labelledby="ad-s2"><h2 id="ad-s2">2. Attendance</h2>
+    <section class="ad-card glass" aria-labelledby="ad-s2"><h2 id="ad-s2">2. Attendance</h2>
       <p class="ad-help">How many students ate in each meal slot.</p>
       <div class="ad-grid">${SLOTS.map((s) => `<div class="ad-field"><label for="ad-att-${s}">${cap(s)}: students who ate</label><input id="ad-att-${s}" data-att="${s}" type="number" min="0" max="4000"></div>`).join("")}
         <div class="ad-field"><label for="ad-present">Students on campus (optional)</label><input id="ad-present" type="number" min="0" max="4000"></div></div></section>
-    <section class="ad-card" aria-labelledby="ad-s3"><h2 id="ad-s3">3. Dishes and quantities</h2><p class="ad-help">${WHY}</p>
-      <div class="ad-pills" role="group" aria-label="Meal slot">${SLOTS.map((s) => `<button type="button" data-slot="${s}" aria-pressed="false">${cap(s)}</button>`).join("")}</div>
+    <section class="ad-card glass" aria-labelledby="ad-s3"><h2 id="ad-s3">3. Dishes and quantities</h2><p class="ad-help">${WHY}</p>
+      <div class="seg ad-pills" role="group" aria-label="Meal slot">${SLOTS.map((s) => `<button type="button" data-slot="${s}" aria-pressed="false">${cap(s)}</button>`).join("")}</div>
       <div class="ad-tablewrap"><table><thead><tr><th>Dish</th><th>Prepared</th><th>Top up</th><th>Eaten</th><th>Left over</th><th>Ran out early</th><th>Not served</th></tr></thead><tbody id="ad-rows"></tbody></table></div>
-      <div class="ad-actions"><label class="sr-only" for="ad-add">Add a dish not on the menu</label><select id="ad-add" style="min-height:44px;min-width:240px;border:1px solid #B7C2B8;border-radius:8px;padding:0 10px"><option value="">Add a dish not on the menu</option></select>
+      <div class="ad-actions"><label class="sr-only" for="ad-add">Add a dish not on the menu</label><select id="ad-add" class="ad-add-select"><option value="">Add a dish not on the menu</option></select>
         <button class="btn btn-small" id="ad-add-btn" type="button">Add dish</button></div></section>
-    <section class="ad-card" aria-labelledby="ad-s4"><h2 id="ad-s4">4. Ingredients used</h2><p class="ad-help">Kilograms used in the day. Pick from the ingredient list, or type a new one.</p>
+    <section class="ad-card glass" aria-labelledby="ad-s4"><h2 id="ad-s4">4. Ingredients used</h2><p class="ad-help">Kilograms used in the day. Pick from the ingredient list, or type a new one.</p>
       <div class="ad-tablewrap"><table><thead><tr><th>Ingredient</th><th>Used (kg)</th><th><span class="sr-only">Remove</span></th></tr></thead><tbody id="ad-ing"></tbody></table></div>
       <datalist id="ad-ing-list"></datalist>
       <div class="ad-actions"><button class="btn btn-small" id="ad-ing-add" type="button">Add ingredient</button>
         <button class="btn btn-small" id="ad-fill" type="button">Fill from recipes</button></div></section></div>
-    <section class="ad-card" aria-labelledby="ad-s5"><h2 id="ad-s5">5. Review and save</h2>
+    <section class="ad-card glass" aria-labelledby="ad-s5"><h2 id="ad-s5">5. Review and save</h2>
       <p class="ad-help">Warnings point at values that look unusual compared with what the model expected. They never stop a save.</p>
       <div class="ad-field" style="max-width:320px"><label for="ad-by">Entered by (optional)</label><input id="ad-by" maxlength="60"></div>
       <div class="ad-actions"><button class="btn" id="ad-check" type="button">Check entry</button><button class="btn btn-primary" id="ad-save" type="button">Save day</button></div>
       <div id="ad-msg" aria-live="polite"></div></section>
-    <section class="ad-card" aria-labelledby="ad-s-import"><h2 id="ad-s-import">Bulk import from CSV</h2>
+    <section class="ad-card glass" aria-labelledby="ad-s-import"><h2 id="ad-s-import">Bulk import from CSV</h2>
       <p class="ad-help">Already have records in a spreadsheet? Import a whole range of days at once instead of typing them in one by one.
         Each file holds one table (pick which below); a row for a date that already has entries replaces it. A bad row is skipped and
         listed, the rest of the file is still imported.</p>
@@ -80,20 +82,21 @@ const SKELETON = `
       <div class="ad-actions" style="margin-top:0"><button type="button" class="btn btn-small" id="ad-imp-template">Download a template for this table</button></div>
       <p class="ad-help" style="margin-top:12px">Or paste CSV text directly:</p>
       <label class="sr-only" for="ad-imp-text">CSV text</label>
-      <textarea id="ad-imp-text" rows="5" placeholder="date,meal_slot,attendance&#10;2026-10-06,lunch,3200" style="width:100%;padding:10px;border:1px solid #B7C2B8;border-radius:8px;font:13px/1.4 monospace"></textarea>
+      <textarea id="ad-imp-text" class="ad-textarea" rows="5" placeholder="date,meal_slot,attendance&#10;2026-10-06,lunch,3200"></textarea>
       <div id="ad-imp-preview"></div>
       <div class="ad-actions"><button class="btn" id="ad-imp-preview-btn" type="button">Preview</button>
         <button class="btn btn-primary" id="ad-imp-go" type="button">Import</button></div>
       <div id="ad-imp-msg" aria-live="polite"></div></section>
-    <section class="ad-card" aria-labelledby="ad-s6"><h2 id="ad-s6">Recent entries</h2>
+    <section class="ad-card glass" aria-labelledby="ad-s6"><h2 id="ad-s6">Recent entries</h2>
       <div class="ad-tablewrap"><table><thead><tr><th>Date</th><th>Context</th><th>Attendance</th><th>Dishes</th><th>Ingredients</th><th>Saved at</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="ad-recent"></tbody></table></div>
       <div class="ad-actions">${TABLES.map((t) => `<button class="btn btn-small" data-export="${t}" type="button">Export ${t}.csv</button>`).join("")}</div></section>
-    <section class="ad-card" aria-labelledby="ad-s7"><h2 id="ad-s7">Forecast versus actual</h2>
+    <section class="ad-card glass" aria-labelledby="ad-s7"><h2 id="ad-s7">Forecast versus actual</h2>
       <p class="ad-help">Approved forecasts next to what was logged afterwards.</p><div id="ad-cmp"></div></section>
   </div>`;
 
 export function mountAdmin(root) {
   root.innerHTML = SKELETON;
+  root.querySelectorAll(".seg").forEach(liquid);
   const $ = (s) => root.querySelector(s);
   const S = { slot: "lunch", rows: {}, menu: null, ingredients: [], catalogue: [], ing: [], today: null };
   const showMsg = (html, kind) => { $("#ad-msg").innerHTML = html ? `<div class="ad-msg ${kind}">${html}</div>` : ""; };
@@ -354,6 +357,7 @@ export function mountAdmin(root) {
       + "and this online demo is a read only snapshot. Run FeedForward locally (see the README on GitHub) to log days, import CSV files "
       + "and compare forecasts with what was actually eaten.";
     $("#ad-pin-form").hidden = true;
+    $("#ad-gate").insertAdjacentHTML("beforeend", `<a class="btn btn-primary" href="https://github.com/Laksh718/FeedForward#run-it-yourself" target="_blank" rel="noopener">${icon("code")}Run it yourself</a>`);
     return;
   }
   let saved = "";
