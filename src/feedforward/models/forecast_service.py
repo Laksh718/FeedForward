@@ -15,8 +15,9 @@ from feedforward.data.features import WEATHER_TYPE_RAIN_LEVEL, build_features, m
 from feedforward.models.baselines import usual_plan
 from feedforward.models.bundle import ModelBundle
 from feedforward.models.metrics import round_portions
+from feedforward.models.surplus_detector import InventoryAwareSurplusDetector
 from feedforward.models.train import FINAL_DIR
-from feedforward.plugins.surplus_detector_stub import StubSurplusDetector, SurplusDetector
+from feedforward.plugins.surplus_detector_stub import SurplusDetector
 
 TOTALS_NOTE = "P10 and P90 totals add dish ranges, so they form a wider band than the true range of the total."
 
@@ -82,7 +83,9 @@ class ForecastService:
         self.history = history
         self.dishes = pd.read_parquet(C.PROCESSED_DIR / "dishes.parquet")
         self.menu = pd.read_parquet(C.PROCESSED_DIR / "weekly_menu.parquet")
-        self.detector = detector or StubSurplusDetector()
+        self.inventory_features = pd.read_parquet(C.TIMESERIES_DIR / "inventory_features.parquet").set_index(
+            ["date", "dish_id"])
+        self.detector = detector or InventoryAwareSurplusDetector()
         self.recommend_quantile = recommend_quantile
 
     def forecast(self, date, meal_slot: str, dish_ids: list[str] | None = None, overrides: Overrides | None = None,
@@ -116,11 +119,12 @@ class ForecastService:
         rows = []
         for i, r in feats.reset_index(drop=True).iterrows():
             p10, p50, p90 = (int(round(v)) for v in q[:, i])
+            inv = self._inventory_row(day, r["dish_id"])
             rows.append({"dish_id": r["dish_id"], "dish_name": names.get(r["dish_id"], r["dish_id"]),
                          "is_core": bool(r["is_core"]), "special_limited": bool(r["special_limited"]),
                          "is_choice": bool(r["is_choice"]), "p10": p10, "p50": p50, "p90": p90,
                          "recommended": int(rec[i]), "usual_plan": int(round(usual[i])),
-                         "surplus_risk": self.detector.assess(float(usual[i]), p50, p90),
+                         "surplus_risk": self.detector.assess(float(usual[i]), p50, p90, **inv),
                          "has_history": bool(r["n_lags"] > 0),
                          "last_week_demand": int(round(r["demand_lag_7"])) if r["has_lag_7"] else None,
                          "two_weeks_ago_demand": int(round(r["demand_lag_14"])) if r["has_lag_14"] else None})
@@ -130,6 +134,17 @@ class ForecastService:
         return {"date": str(day.date()), "meal_slot": slot, "expected_attendance": att,
                 "dishes": rows, "day_facts": self._day_facts(day, feats), "totals": total, "totals_note": TOTALS_NOTE,
                 "overrides_applied": ov.applied(), "notes": self._notes(day, rows)}
+
+    def _inventory_row(self, day: pd.Timestamp, dish_id: str) -> dict:
+        """min_days_to_expiry, stock_cover_days, kg_expiring_within_3_days for the detector, or None each
+        when the dish or date has no inventory row (e.g. an ingredient-free dish, or a date past the
+        inventory simulation's range)."""
+        try:
+            r = self.inventory_features.loc[(day, dish_id)]
+        except KeyError:
+            return {"min_days_to_expiry": None, "stock_cover_days": None, "kg_expiring_within_3_days": None}
+        return {"min_days_to_expiry": float(r["min_days_to_expiry"]), "stock_cover_days": float(r["stock_cover_days"]),
+                "kg_expiring_within_3_days": float(r["kg_expiring_within_3_days"])}
 
     @staticmethod
     def _day_facts(day: pd.Timestamp, feats: pd.DataFrame) -> dict:
