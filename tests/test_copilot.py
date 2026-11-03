@@ -269,3 +269,42 @@ def test_quoting_the_wide_range_rule_is_not_an_invented_figure():
     ctx = {"totals": {"most_likely": 12469, "range_width_pct_of_most_likely": 41}}
     assert ungrounded_numbers("The range is over 30 percent of the most likely 12,469, so it is uncertain.", ctx) == []
     assert ungrounded_numbers("Cook 7,777 because the range is over 30 percent.", ctx) == [7777.0]
+
+
+@pytest.mark.parametrize("question", ["hi", "Hello!", "thanks", "good morning"])
+def test_greetings_get_a_hello_with_examples(svc, question):
+    r = answer_question(question, svc, TODAY + timedelta(days=1), "lunch", "core", Overrides(), TODAY)
+    assert r["source"] == "rules" and r["answer"].startswith("Hello!") and "What should we cook" in r["answer"]
+
+
+@pytest.mark.parametrize("question", ["tell me what to plan", "What should we cook for lunch?", "what to plan for dinner",
+                                      "give me the plan", "How many portions?"])
+def test_planning_questions_explain_the_plan(keys, question):
+    assert understand(question, keys).intent == "explain_dish"
+
+
+def test_part_of_a_dish_name_finds_the_dish_on_the_menu(svc):
+    r = answer_question("How much rice should I make?", svc, TODAY + timedelta(days=1), "lunch", "core", Overrides(), TODAY, use_llm=False)
+    assert r["intent"] == "explain_dish" and r["context"]["dish"]["name"] == "Steamed Rice"
+
+
+@pytest.mark.parametrize("question", ["Is the milk powder stock enough?", "Tell me a joke", "hi, can you approve it"])
+def test_new_rules_keep_other_questions_out(keys, question):
+    assert understand(question, keys).intent == "out_of_scope"
+
+
+def test_gemini_a_slow_model_is_raced_by_the_next(monkeypatch):
+    import time as _time
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setenv("GEMINI_MODEL", "slow-model")
+    monkeypatch.setenv("GEMINI_FALLBACK_MODELS", "quick-model")
+    monkeypatch.setattr(llm, "HEDGE_AFTER_S", 0.2)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = request.url.path.split("/")[-1].split(":")[0]
+        if model == "slow-model":
+            _time.sleep(1.5)
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": f"From {model}."}]}}]})
+    started = _time.monotonic()
+    assert llm.complete([{"role": "user", "content": "hi"}], httpx.MockTransport(handler)) == "From quick-model."
+    assert _time.monotonic() - started < 1.2
