@@ -20,7 +20,11 @@ RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.3"
 COPY requirements-deploy.txt .
 RUN pip install -r requirements-deploy.txt
 
-COPY . .
+# Run as an ordinary user (UID 1000, which Hugging Face Spaces requires). It owns the app folder so the server
+# can write reviews and Daily log entries to data_store/admin_logs.
+RUN useradd --create-home --uid 1000 app
+COPY --chown=app:app . .
+USER app
 ENV PYTHONPATH=/app/src:/app
 
 EXPOSE 8000
