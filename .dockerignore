@@ -1,0 +1,18 @@
+# Keep the image to what the server needs (the trained model, processed tables, the code and the dashboard).
+.git
+.venv*
+.env
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+site
+Datasets
+docs
+tests
+reports/*.png
+artifacts/nltk_data
+artifacts/models/dev*
+data_store/admin_logs/*
+!data_store/admin_logs/.gitkeep
+*.egg-info
