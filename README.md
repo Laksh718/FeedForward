@@ -107,11 +107,13 @@ The tests need the processed data and the final model: run the preprocessing ste
 
 ## The dashboard
 
-Open the server address. It opens on a **Home** landing page (the pipeline, in plain language, and a shortcut to each view). The bar at
-the top switches the view:
+Open the server address. It opens on a **Home** landing page: a live preview of the next plan, the pipeline in plain language, why the
+forecast is a range, and a shortcut to each view. The glass bar at the top switches the view (on a phone it becomes a dock at the bottom of
+the screen; the arrow keys move between the tabs).
 
-- **Service board** (default once you enter): the headline ("Cook N portions for lunch, M fewer than the usual plan"), dish tickets with range
-  bars, the week chart, "Try a what if" and the copilot. **Approve this plan** saves the plan; **Change quantities** lets you edit each dish
+- **Service board** (default once you enter): pick the meal slot and the day (arrows or the date picker), then the headline ("Cook N portions
+  for lunch, M fewer than the usual plan"), the day's context (temperature, rain, exam or test week, holidays), a summary card with the total to
+  cook against the likely range and the usual plan, dish tickets with range bars, the week chart, "Try a what if" and the copilot. **Approve this plan** saves the plan; **Change quantities** lets you edit each dish
   first. A search box plus category and diet filters narrow the dish tickets down without changing the underlying forecast.
 - **Forecast desk**: past week and next 7 days in one chart, the dish by dish table with low end, most likely, high end, usual plan and cook,
   and the surplus risk panel.
@@ -122,6 +124,10 @@ the top switches the view:
   sections (day context, attendance, dishes and quantities, ingredients, review and save), **bulk import from CSV** (pick a table, upload or
   paste a CSV shaped like its export, preview it, then import; a bad row is skipped and listed, the rest of the file still goes in), recent
   entries with edit and delete, CSV export and "Forecast versus actual".
+
+The look is one small design system in `app/css/base.css` (glass surfaces over a slowly drifting background, a sliding pill under every
+segmented control, numbers that roll to their new value, charts that draw in when their data changes); the motion helpers live in
+`app/js/fx.js`, the logo in `app/js/logo.js` and the icons in `app/js/icons.js`. Everything respects the system's reduce motion setting.
 
 Click a day in a chart to see that day. "Main dishes" are the dishes the CVAE forecasts; "Show all dishes" adds the support dishes (bread, butter, chutney).
 
