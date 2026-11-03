@@ -23,6 +23,8 @@ def isolated_log(tmp_path, monkeypatch):
 def test_health(client):
     r = client.get("/api/health").json()
     assert r["status"] == "ok" and r["default_plan_date"] == "2026-10-07" and "Simulated" in r["data_source_chip"]
+    assert r["first_plan_date"] <= r["default_plan_date"] <= r["last_plan_date"]
+    assert client.get("/api/plan", params={"date": r["last_plan_date"], "slot": "lunch"}).status_code == 200
 
 
 def test_plan_core_and_all(client):
