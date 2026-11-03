@@ -5,7 +5,7 @@ import { liquid, replay, setHTML } from "./fx.js";
 import { icon } from "./icons.js";
 import { logoMark } from "./logo.js";
 import { ask, review, setDate, setDish, setScope, state, subscribe } from "./state.js";
-import { SOURCE_NOTE, cap, esc, fmt, riskLabel, shortDate, weekdayName } from "./util.js";
+import { cap, esc, fmt, riskLabel, shortDate, sourceNote, weekdayName } from "./util.js";
 import { mountWhatIf } from "./whatif.js";
 
 const NAV = [["forecast", "Forecast", "desk"], ["whatif", "What if", "sliders"], ["risk", "Surplus risk", "alert"], ["approvals", "Approvals", "check"], ["copilot", "Copilot", "chat"]];
@@ -146,7 +146,7 @@ export function mountDesk(root) {
     const ans = q("#dk-answer");
     ans.className = `answer ${last?.role === "err" ? "err" : ""}`;
     setHTML(ans, s.chatBusy ? `<p class="q">${esc(lastQ?.text ?? "")}</p><p class="typing-line"><span class="dots"><i></i><i></i><i></i></span>Working on it</p>`
-      : last ? `<p class="q">${esc(lastQ?.text ?? "")}</p><p class="a">${esc(last.text)}</p>${SOURCE_NOTE[last.source] ? `<p class="src">${SOURCE_NOTE[last.source]}</p>` : ""}`
+      : last ? `<p class="q">${esc(lastQ?.text ?? "")}</p><p class="a">${esc(last.text)}</p>${sourceNote(last) ? `<p class="src">${sourceNote(last)}</p>` : ""}`
         : `<p class="empty-note">${icon("chat")}Ask a question and the answer appears here. It only uses the figures on this page.</p>`);
   });
 }
