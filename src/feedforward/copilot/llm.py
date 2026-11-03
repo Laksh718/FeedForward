@@ -13,9 +13,9 @@ from feedforward import config as C
 
 load_dotenv(C.PROJECT_ROOT / ".env")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "llama-3.3-70b-versatile"   # check this name is still available in your Groq console
+DEFAULT_MODEL = "openai/gpt-oss-20b"        # check this name is still available in your Groq console
 TEMPERATURE = 0.2                           # low, so the same question gives nearly the same answer
-MAX_TOKENS = 300                            # answers are short by design
+MAX_TOKENS = 500                            # answers are short by design, plus room for the model's reasoning tokens
 TIMEOUT_S = 20.0
 
 
@@ -34,7 +34,7 @@ def complete(messages: list[dict], transport: httpx.BaseTransport | None = None)
     if not key:
         raise LLMUnavailable("GROQ_API_KEY is not set in .env")
     body = {"model": os.getenv("GROQ_MODEL", DEFAULT_MODEL), "messages": messages, "temperature": TEMPERATURE,
-            "max_tokens": MAX_TOKENS}
+            "max_tokens": MAX_TOKENS, "reasoning_effort": "low"}
     try:
         with httpx.Client(timeout=TIMEOUT_S, transport=transport) as client:
             r = client.post(GROQ_URL, json=body, headers={"Authorization": f"Bearer {key}"})
