@@ -15,6 +15,8 @@ export const debounce = (fn, ms = 350) => {
 
 export const dayMs = 86400000;
 export const parseDay = (iso) => new Date(`${iso}T00:00:00`);
+// Local calendar date as YYYY-MM-DD (toISOString would shift it by the time zone).
+export const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 export const weekdayName = (iso) => parseDay(iso).toLocaleDateString("en-US", { weekday: "long" });
 export const shortDate = (iso) => parseDay(iso).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
 
@@ -50,8 +52,8 @@ export function showTip(evt, html) {
   tip = tip || Object.assign(document.body.appendChild(document.createElement("div")), { className: "tooltip" });
   tip.innerHTML = html;
   tip.hidden = false;
-  tip.style.left = `${Math.min(evt.clientX + 14, window.innerWidth - 250)}px`;
-  tip.style.top = `${evt.clientY + 14}px`;
+  tip.style.left = `${Math.max(8, Math.min(evt.clientX + 16, window.innerWidth - tip.offsetWidth - 12))}px`;
+  tip.style.top = `${Math.min(evt.clientY + 16, window.innerHeight - tip.offsetHeight - 12)}px`;
 }
 export function hideTip() { if (tip) tip.hidden = true; }
 

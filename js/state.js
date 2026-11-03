@@ -4,7 +4,7 @@ import { api, ApiError } from "./api.js";
 export const state = {
   health: null, slot: "lunch", date: null, weekStart: null, scope: "core", dishId: null,
   overrides: {}, plan: null, whatif: null, week: null, weekDish: null, menu: [],
-  editing: false, adjusted: {}, loading: true, error: null, notice: "",
+  editing: false, adjusted: {}, loading: true, error: null, notice: "", noticeAt: 0, noticeKind: "ok",
   chat: [], chatBusy: false,
 };
 
@@ -82,10 +82,13 @@ export async function review(decision) {
       overrides: state.overrides, adjusted_quantities: adjusted });
     state.plan.review = r.review;
     state.notice = r.message;
+    state.noticeKind = decision === "approve" ? "ok" : "warn";
     state.editing = false;
   } catch (e) {
     state.notice = `${e.message} ${e.fix || ""}`.trim();
+    state.noticeKind = "bad";
   }
+  state.noticeAt = Date.now();   // a new confirmation, even when the text repeats (main.js shows it as a toast)
   emit();
 }
 
