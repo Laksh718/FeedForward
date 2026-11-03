@@ -4,13 +4,14 @@ Google Gemini is used when GEMINI_API_KEY is set; otherwise Groq when GROQ_API_K
 (or the host's environment) and are never printed or logged. If there is no key, no internet or the service fails,
 LLMUnavailable is raised and the caller uses the template answer instead.
 
-Gemini's speed swings with demand (the same model can answer in 2 seconds and then take 30), so a Gemini call tries
-a short chain of models: each gets GEMINI_TIMEOUT_S, and a slow, overloaded, rate limited or unavailable model hands
-over to the next one, within TOTAL_BUDGET_S overall.
+Gemini's speed swings with demand (the same model can answer in 1 second and then take 20), so a Gemini call races a
+short chain of models: the first starts at once, the next one joins when the first has not answered after HEDGE_AFTER_S
+or as soon as it fails (busy, rate limited, unavailable), and the first good answer wins, all within TOTAL_BUDGET_S.
 """
 
 import os
 import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 import httpx
 from dotenv import load_dotenv
@@ -27,8 +28,8 @@ TEMPERATURE = 0.2                           # low, so the same question gives ne
 MAX_TOKENS = 500                            # answers are short by design
 GEMINI_THINKING_TOKENS = 2048               # newer Gemini models think first, and that counts against the output limit
 TIMEOUT_S = 20.0                            # one Groq call
-GEMINI_TIMEOUT_S = 8.0                      # one Gemini model (a free Lite model usually answers in 1 to 4 s) before the next
-TOTAL_BUDGET_S = 26.0                       # all Gemini attempts together, so the copilot never hangs
+HEDGE_AFTER_S = 4.0                         # a Lite model usually answers in 1 to 3 s; after this the next model joins in
+TOTAL_BUDGET_S = 25.0                       # all Gemini attempts together, so the copilot never hangs
 RETRY_STATUS = {404, 408, 429, 500, 502, 503, 504}   # worth trying another model; 400, 401 and 403 are not
 
 # Kept for callers and scripts that used the Groq only names.
@@ -91,27 +92,59 @@ def _gemini_text(data: dict) -> str:
     return text
 
 
+class _TryNext(Exception):
+    """This model could not answer now (slow, busy, rate limited, unavailable or an empty reply); another may."""
+
+
+def _ask_gemini(client: httpx.Client, model: str, messages: list[dict], timeout: float) -> str:
+    try:
+        r = client.post(GEMINI_URL.format(model=model), json=_gemini_body(messages, model),
+                        headers={"x-goog-api-key": _key("GEMINI_API_KEY")}, timeout=timeout)
+    except httpx.TransportError as exc:
+        raise _TryNext(type(exc).__name__) from exc
+    if r.status_code in RETRY_STATUS:
+        raise _TryNext(f"HTTP {r.status_code}")
+    r.raise_for_status()                          # a refused key or a bad request will not improve with another model
+    try:
+        return _gemini_text(r.json())
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        raise _TryNext("empty or blocked reply") from exc
+
+
 def _gemini(messages: list[dict], client: httpx.Client) -> str:
-    key, started, last = _key("GEMINI_API_KEY"), time.monotonic(), "no model tried"
-    for model in gemini_models():
-        left = TOTAL_BUDGET_S - (time.monotonic() - started)
-        if left < 2:
-            break
-        try:
-            r = client.post(GEMINI_URL.format(model=model), json=_gemini_body(messages, model),
-                            headers={"x-goog-api-key": key}, timeout=min(GEMINI_TIMEOUT_S, left))
-        except httpx.TransportError as exc:          # timeout or network trouble: try the next model
-            last = type(exc).__name__
-            continue
-        if r.status_code in RETRY_STATUS:
-            last = f"HTTP {r.status_code}"
-            continue
-        r.raise_for_status()                          # a refused key or a bad request will not improve with another model
-        try:
-            return _gemini_text(r.json())
-        except (KeyError, IndexError, TypeError, ValueError):   # blocked or empty reply: another model may still answer
-            last = "empty or blocked reply"
-    raise LLMUnavailable(f"the language model could not be reached ({last})")
+    models, deadline = gemini_models(), time.monotonic() + TOTAL_BUDGET_S
+    pool = ThreadPoolExecutor(max_workers=len(models))
+    running: dict = {}
+    last = "no model tried"
+
+    def start_next() -> None:
+        model = models[len(running) + len(tried)]
+        running[pool.submit(_ask_gemini, client, model, messages, max(1.0, deadline - time.monotonic()))] = model
+
+    tried: list[str] = []
+    try:
+        start_next()
+        while running:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                break
+            more = len(running) + len(tried) < len(models)
+            done, _ = wait(running, timeout=min(left, HEDGE_AFTER_S) if more else left, return_when=FIRST_COMPLETED)
+            if not done:                          # still waiting: let the next model race the slow one
+                if more:
+                    start_next()
+                continue
+            for future in done:
+                tried.append(running.pop(future))
+                try:
+                    return future.result()        # the first good answer wins
+                except _TryNext as exc:
+                    last = str(exc)
+            if len(running) + len(tried) < len(models):
+                start_next()                      # it failed outright: bring in the next model now
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
+    raise LLMUnavailable(f"the language model could not be reached ({last if tried else 'ReadTimeout'})")
 
 
 def complete(messages: list[dict], transport: httpx.BaseTransport | None = None) -> str:
