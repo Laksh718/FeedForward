@@ -177,6 +177,35 @@ Check a build in a browser with `node tests/static_smoke.mjs` (instructions at t
 
 The first time, check **Settings, Pages** on GitHub: source "Deploy from a branch", branch `gh-pages`, folder `/ (root)`.
 
+## Deploy the full version on Koyeb (free)
+
+GitHub Pages only serves the prebuilt snapshot. To put the real server online (free copilot questions, any what if, saving reviews and
+the Daily log), deploy the repository as a container. The `Dockerfile` installs CPU only torch and the run time packages in
+`requirements-deploy.txt`; the trained model and processed tables it needs (about 6 MB under `artifacts/`) are in git.
+
+1. Sign in at [koyeb.com](https://www.koyeb.com) with GitHub, then **Create service** > **Web service** > **GitHub** and pick this
+   repository, branch `main`. Allow Koyeb's GitHub app to see the repository if it asks.
+2. Builder: **Dockerfile** (found at the repository root). Instance: the **free** one.
+3. Environment variables (mark both as secrets):
+   - `ADMIN_PIN`: a long random PIN, not 1234 (anyone with the link can reach the Daily log page).
+   - `GROQ_API_KEY`: optional. Use a separate key for this deployment, because every visitor's copilot question uses it. Without
+     a key the copilot answers in its template wording.
+4. Port `8000`, protocol HTTP. Health check: HTTP on path `/api/health`, with a grace period of about two minutes (loading the model
+   takes a while on the free instance).
+5. Deploy. The app is served at the `*.koyeb.app` address Koyeb shows; every push to `main` redeploys it.
+
+Good to know on the free instance:
+- The server uses about 430 MB of the 512 MB of memory, so a burst of requests can restart it. If that happens often, use a bigger
+  instance or another host with more memory (Hugging Face Spaces gives 16 GB for free).
+- Reviews and Daily log entries are written to the container's disk, which is reset on every redeploy or restart. Export the
+  Daily log as CSV if you want to keep entries.
+- A free service is paused when it gets no traffic for a while and takes a moment to wake on the next visit.
+- After retraining the model, commit the new `artifacts/models/final`, `artifacts/processed` and `artifacts/timeseries` so the
+  deployment uses it.
+
+To try the same container on your own machine: `docker build -t feedforward .` then
+`docker run -p 8000:8000 --env-file .env feedforward` and open http://localhost:8000.
+
 ## Demo script (about 8 minutes)
 
 1. **Idea (1 min):** "A range, not a number, and a person decides." Open the Service board: read the headline and the data source chip
