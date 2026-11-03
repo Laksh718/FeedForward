@@ -176,16 +176,7 @@ body.scrolled .topbar::before { background: rgba(255, 255, 255, .72); box-shadow
 .topbar-link:hover { background: rgba(255, 255, 255, .8); color: var(--ink); }
 .topbar-link .ic { width: 18px; height: 18px; }
 
-/* online demo notice (GitHub Pages) under the top bar */
-.demo-strip { display: flex; align-items: center; gap: 12px; width: min(var(--page), calc(100% - 24px)); margin: 12px auto 0; padding: 10px 10px 10px 16px;
   border-radius: var(--r); font: 400 13.5px/1.45 var(--font); color: var(--ink-2); animation: rise .6s var(--ease) both .2s; }
-.demo-strip > .ic { width: 20px; height: 20px; color: var(--brand); }
-.demo-strip p { flex: 1; min-width: 0; }
-.demo-strip strong { color: var(--ink); font-weight: 600; }
-.demo-strip a { font-weight: 600; white-space: nowrap; }
-.demo-strip .icon-btn { width: 36px; height: 36px; box-shadow: none; background: transparent; border-color: transparent; }
-.demo-strip .icon-btn:hover { background: rgba(255, 255, 255, .8); }
-.demo-strip.out { animation: fadeOut .3s var(--ease) both; }
 .wi-demo { margin: 12px 0 0; }
 
 /* ---------- page frame shared by the views */
@@ -286,7 +277,6 @@ main { position: relative; }
   .tab-long { display: none; }
   .tab-short { display: inline; }
   .topbar-link { margin-left: auto; }
-  .demo-strip { width: calc(100% - 16px); margin-top: 8px; font-size: 13px; }
   .toasts { bottom: calc(100px + env(safe-area-inset-bottom)); }
   .view { padding-top: 20px; }
 }

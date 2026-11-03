@@ -55,7 +55,7 @@ await send("Network.enable");
 await send("Page.enable");
 await send("Page.navigate", { url: BASE });
 await waitFor("document.querySelector('.ld-snap-tile') && !document.querySelector('.ld-snap-tile').textContent.includes('Loading')", "home numbers");
-check("Home loads with the demo notice", (await text(".demo-strip")).startsWith("Online demo."), (await text(".demo-strip")).slice(0, 60));
+check("Home loads with the live preview", !(await text(".ld-snap-tile")).includes("Loading"), (await text(".ld-preview .ld-pv-title")).slice(0, 60));
 await shot("home");
 
 await ev("location.hash = 'service'");
@@ -138,7 +138,7 @@ await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 900, devi
 for (const view of ["landing", "service", "desk", "calendar"]) {
   await ev(`location.hash = '${view}'`);
   await sleep(700);
-  const wide = await ev("[...document.querySelectorAll('#view-" + view + " *, .demo-strip')].filter((e) => e.offsetParent && e.getBoundingClientRect().right > 391 && !e.closest('.tablewrap, .ad-tablewrap, svg, [aria-hidden=true]')).slice(0, 6).map((e) => (e.id || e.className.baseVal || e.className || e.tagName) + ':' + Math.round(e.getBoundingClientRect().right)).join(' | ')");
+  const wide = await ev("[...document.querySelectorAll('#view-" + view + " *')].filter((e) => e.offsetParent && e.getBoundingClientRect().right > 391 && !e.closest('.tablewrap, .ad-tablewrap, svg, [aria-hidden=true]')).slice(0, 6).map((e) => (e.id || e.className.baseVal || e.className || e.tagName) + ':' + Math.round(e.getBoundingClientRect().right)).join(' | ')");
   check(`phone width: nothing wider than the screen (${view})`, wide === "" && await ev("document.documentElement.scrollWidth <= 391"), wide);
 }
 await ev("location.hash = 'service'");
