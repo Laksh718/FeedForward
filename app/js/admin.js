@@ -1,5 +1,5 @@
 // Daily log (admin): PIN, then a form in five sections, recent entries, CSV export and forecast versus actual.
-import { api, auth } from "./api.js";
+import { STATIC, api, auth } from "./api.js";
 import { SLOTS, WEATHER_TYPES, cap, esc, fmt } from "./util.js";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -348,6 +348,14 @@ export function mountAdmin(root) {
     } catch (e) { showMsg(errText(e), "bad"); }
   }));
 
+  if (STATIC) {   // online demo: entries are saved to the server's files, so there is nothing to unlock
+    $("#ad-gate-t").textContent = "Needs the FeedForward server";
+    $("#ad-gate").querySelector(".ad-help").textContent = "The Daily log saves real entries to files on the FeedForward server, "
+      + "and this online demo is a read only snapshot. Run FeedForward locally (see the README on GitHub) to log days, import CSV files "
+      + "and compare forecasts with what was actually eaten.";
+    $("#ad-pin-form").hidden = true;
+    return;
+  }
   let saved = "";
   try { saved = sessionStorage.getItem("ffpin") || ""; } catch { /* storage blocked */ }
   if (saved) unlock(saved);

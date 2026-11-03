@@ -1,5 +1,6 @@
 // Entry point: view switch, mounting and first load.
 import { mountAdmin } from "./admin.js";
+import { STATIC } from "./api.js";
 import { mountCalendar } from "./calendar.js";
 import { mountDesk } from "./desk.js";
 import { mountLanding } from "./landing.js";
@@ -17,6 +18,14 @@ function showView(name) {
   document.querySelectorAll("[data-view-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.viewTab === view)));
   document.title = TITLES[view];
   window.scrollTo(0, 0);
+}
+
+if (STATIC) {   // online demo (GitHub Pages): say plainly what is precomputed and what needs the server
+  const strip = Object.assign(document.createElement("p"), { className: "demo-strip" });
+  strip.innerHTML = `<strong>Online demo.</strong> Every forecast here was computed by the trained model and saved as a snapshot. `
+    + `What if works one setting at a time, the copilot answers its suggested questions, and the Daily log needs the server. `
+    + `<a href="https://github.com/Laksh718/FeedForward#run-it-yourself">Run it yourself</a>`;
+  document.querySelector(".viewbar").after(strip);
 }
 
 mountLanding(document.getElementById("view-landing"));

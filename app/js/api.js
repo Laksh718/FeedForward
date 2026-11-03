@@ -1,4 +1,5 @@
 // API client. Every failure becomes an ApiError with a plain message and a way to fix it.
+import { staticRequest } from "./static-api.js";
 
 export class ApiError extends Error {
   constructor(status, message, fix) {
@@ -10,7 +11,16 @@ export class ApiError extends Error {
 
 export const auth = { pin: "" };   // sent as X-Admin-Pin on every request once the admin has unlocked the Daily log
 
+// Static demo (GitHub Pages): scripts/build_static_site.py adds <meta name="feedforward-mode" content="static">
+// and a prebuilt snapshot under data/, so there is no server to call. Served by uvicorn, the meta tag is absent.
+export const STATIC = document.querySelector('meta[name="feedforward-mode"]')?.content === "static";
+
 async function request(path, options = {}, asText = false) {
+  if (STATIC) {
+    const url = new URL(path, "https://feedforward.invalid");
+    return staticRequest(options.method || "GET", url.pathname, Object.fromEntries(url.searchParams),
+      options.body ? JSON.parse(options.body) : {});
+  }
   let res;
   try {
     res = await fetch(`/api${path}`, { ...options, headers: { ...(options.headers || {}), ...(auth.pin ? { "X-Admin-Pin": auth.pin } : {}) } });

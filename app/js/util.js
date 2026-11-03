@@ -59,4 +59,5 @@ export function hideTip() { if (tip) tip.hidden = true; }
 export const SOURCE_NOTE = {
   llm: "Written by the language model from the figures on this page.",
   template: "Standard wording from the figures on this page (language model not used).",
+  demo: "Online demo note (the copilot itself runs on the FeedForward server).",
 };
