@@ -36,7 +36,7 @@ export async function refresh(parts = { plan: true, week: true, dish: true, menu
     Object.keys(jobs).forEach((k, i) => {
       if (k === "plan") {
         state.plan = hasOverrides() ? done[i].changed : done[i];
-        state.whatif = hasOverrides() ? { baseline: done[i].baseline_totals, difference: done[i].difference } : null;
+        state.whatif = hasOverrides() ? { baseline: done[i].baseline_totals, difference: done[i].difference, impact: done[i].impact ?? null } : null;
         state.editing = false;
         state.adjusted = {};
       } else if (k === "menu") state.menu = done[i].dishes;
