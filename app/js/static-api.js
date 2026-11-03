@@ -27,7 +27,10 @@ const copy = (x) => (x == null ? x : structuredClone(x));
 const health = () => load("health.json");
 const demoInfo = async () => (await health()).demo;
 const range = (dates) => (dates.length ? `${dates[0]} to ${dates[dates.length - 1]}` : "no dates");
-const serverOnly = (what) => new ApiError(503, `${what} needs the FeedForward server, so it is switched off in this online demo.`, RUN_LOCALLY);
+// "Not in the snapshot" errors carry miss = true: with a deployed server configured (api.js REMOTE), those calls go
+// to the server instead; without one, the message is shown as it is.
+const miss = (e) => Object.assign(e, { miss: true });
+const serverOnly = (what) => miss(new ApiError(503, `${what} needs the FeedForward server, so it is switched off in this online demo.`, RUN_LOCALLY));
 
 // Same canonical form the build script uses: the given settings, sorted by name, as name=value joined by &.
 export const overridesKey = (o = {}) => Object.keys(o).filter((k) => o[k] !== undefined && o[k] !== null).sort()
@@ -71,10 +74,10 @@ async function dishes({ date, slot }) {
 async function week({ slot = "lunch", start, scope = "core", dish_id: dishId }) {
   const demo = await demoInfo();
   if (start && start !== demo.week_start) {
-    throw new ApiError(400, `This demo has the week starting ${demo.week_start} only.`, RUN_LOCALLY);
+    throw miss(new ApiError(400, `This demo has the week starting ${demo.week_start} only.`, RUN_LOCALLY));
   }
   const w = await load(dishId ? `week/${slot}/dish/${dishId}.json` : `week/${slot}/${scope}.json`);
-  if (!w) throw new ApiError(404, "This week view is not in the demo snapshot.", "Pick another dish or meal.");
+  if (!w) throw miss(new ApiError(404, "This week view is not in the demo snapshot.", "Pick another dish or meal."));
   return copy(w);
 }
 
@@ -87,13 +90,13 @@ async function whatif({ date, meal_slot: slot, scope = "core", overrides = {} })
   const demo = await demoInfo();
   const answers = await load(`whatif/${date}.json`);
   if (!answers) {
-    throw new ApiError(400, `In this online demo, what if answers are prebuilt for ${range(demo.whatif_dates)} only.`,
-      "Pick one of those days in the week chart, or run FeedForward locally to try any date.");
+    throw miss(new ApiError(400, `In this online demo, what if answers are prebuilt for ${range(demo.whatif_dates)} only.`,
+      "Pick one of those days in the week chart, or run FeedForward locally to try any date."));
   }
   const hit = answers[slot]?.[scope]?.[overridesKey(overrides)];
   if (!hit) {
-    throw new ApiError(400, "This online demo has what if answers for one setting at a time.",
-      "Set the other settings back to normal, or run FeedForward locally to combine them.");
+    throw miss(new ApiError(400, "This online demo has what if answers for one setting at a time.",
+      "Set the other settings back to normal, or run FeedForward locally to combine them."));
   }
   const r = copy(hit);
   r.changed.review = latestReview(date, slot) ?? r.changed.review;
@@ -140,5 +143,5 @@ export async function staticRequest(method, path, params, body) {
   const route = ROUTES[`${method} ${path.replace(/^\/api/, "")}`];
   if (route) return route(params, body);
   if (path.startsWith("/admin") || path === "/ingredients") throw serverOnly("The Daily log");
-  throw new ApiError(404, "This feature is not available in the online demo.", RUN_LOCALLY);
+  throw miss(new ApiError(404, "This feature is not available in the online demo.", RUN_LOCALLY));
 }

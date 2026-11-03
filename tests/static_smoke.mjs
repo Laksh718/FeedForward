@@ -4,6 +4,7 @@
 //   mkdir -p /tmp/pages && ln -sfn "$PWD/site" /tmp/pages/FeedForward && python -m http.server -d /tmp/pages 8090
 //   node tests/static_smoke.mjs                 (BASE_URL defaults to http://localhost:8090/FeedForward/)
 // Set SHOTS_DIR to also save a screenshot of each view. Drives the page through the Chrome DevTools protocol.
+// It opens the page with ?remote=off, so it checks the snapshot alone and never calls the deployed server.
 import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -53,7 +54,8 @@ const check = (name, ok, detail = "") => results.push(`${ok ? "PASS" : "FAIL"}  
 await send("Runtime.enable");
 await send("Network.enable");
 await send("Page.enable");
-await send("Page.navigate", { url: BASE });
+// ?remote=off: test the snapshot on its own, without the deployed server the page can also call
+await send("Page.navigate", { url: `${BASE}${BASE.includes("?") ? "&" : "?"}remote=off` });
 await waitFor("document.querySelector('.ld-snap-tile') && !document.querySelector('.ld-snap-tile').textContent.includes('Loading')", "home numbers");
 check("Home loads with the live preview", !(await text(".ld-snap-tile")).includes("Loading"), (await text(".ld-preview .ld-pv-title")).slice(0, 60));
 await shot("home");
