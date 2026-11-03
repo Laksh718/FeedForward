@@ -1,4 +1,5 @@
 // What if controls, shared by both views: attendance change, special day, weather.
+import { STATIC } from "./api.js";
 import { resetOverrides, setOverrides, subscribe } from "./state.js";
 import { WEATHER_TYPES, esc, fmt } from "./util.js";
 
@@ -18,12 +19,18 @@ export function mountWhatIf(root, { gridClass, fieldClass = "field", showSummary
         <select id="${id}-weather"><option value="">As forecast</option><option value="Dry">Dry</option>
         ${WEATHER_TYPES.map((w) => `<option value="${esc(w)}">${esc(w)}</option>`).join("")}</select></div>
     </div>
+    ${STATIC ? `<p class="hint wi-demo">Online demo: one setting at a time, for the next 7 days. Run FeedForward locally to combine settings.</p>` : ""}
     <div class="whatif-foot wi-result" id="${id}-foot" aria-live="polite" hidden></div>`;
   const q = (s) => root.querySelector(`#${id}-${s}`);
   const att = q("att"), special = q("special"), weather = q("weather"), hint = q("att-hint"), foot = q("foot");
   const label = (v) => (Number(v) === 0 ? "0% from the usual" : `${v > 0 ? "+" : ""}${v}% from the usual`);
 
-  const apply = () => {
+  const apply = (changed) => {
+    if (STATIC) {   // the demo snapshot holds one setting at a time, so changing one resets the others
+      if (changed !== att) att.value = 0;
+      if (changed !== special) special.value = "";
+      if (changed !== weather) weather.value = "";
+    }
     const o = {};
     if (Number(att.value) !== 0) o.attendance_change_pct = Number(att.value);
     if (special.value) o[special.value] = true;
@@ -31,9 +38,9 @@ export function mountWhatIf(root, { gridClass, fieldClass = "field", showSummary
     return setOverrides(o);
   };
   att.addEventListener("input", () => { hint.textContent = label(att.value); });
-  att.addEventListener("change", apply);
-  special.addEventListener("change", apply);
-  weather.addEventListener("change", apply);
+  att.addEventListener("change", () => apply(att));
+  special.addEventListener("change", () => apply(special));
+  weather.addEventListener("change", () => apply(weather));
 
   subscribe((s) => {
     const o = s.overrides;
