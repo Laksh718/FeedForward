@@ -1,7 +1,9 @@
 // View: Calendar. The project's academic calendar (real TN public holidays, festivals, exam phases)
 // cross-checked against a live public holiday feed. Click a day to open the Service board for it.
 import { api } from "./api.js";
-import { setDate, state as mainState } from "./state.js";
+import { replay } from "./fx.js";
+import { icon } from "./icons.js";
+import { setDate, state as mainState, subscribe } from "./state.js";
 import { esc } from "./util.js";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -10,20 +12,20 @@ const addMonths = (m, n) => { const [y, mo] = m.split("-").map(Number); const d 
 
 const SKELETON = `
   <header class="cal-top">
-    <div><p class="cal-kicker">Calendar</p><h1 class="cal-brand">What's on the mess calendar</h1>
-      <p class="cal-sub">Real public holidays, festivals and exam phases, cross-checked against a live calendar.</p></div>
+    <div><p class="eyebrow">${icon("calendar")}Calendar</p><h1 class="cal-brand">What's on the mess calendar</h1>
+      <p class="cal-sub">Real public holidays, festivals and exam phases, cross-checked against a live calendar. Click a day to open its plan.</p></div>
     <div class="cal-nav" role="group" aria-label="Choose a month">
-      <button type="button" id="cal-prev" aria-label="Previous month">&#8249;</button>
-      <h2 id="cal-month-label"></h2>
-      <button type="button" id="cal-next" aria-label="Next month">&#8250;</button>
-      <button type="button" class="btn btn-ghost" id="cal-today">Jump to today</button>
+      <button type="button" class="icon-btn" id="cal-prev" aria-label="Previous month">${icon("left")}</button>
+      <h2 id="cal-month-label" aria-live="polite"></h2>
+      <button type="button" class="icon-btn" id="cal-next" aria-label="Next month">${icon("right")}</button>
+      <button type="button" class="btn" id="cal-today">Jump to today</button>
     </div>
   </header>
   <p class="cal-live" id="cal-live"></p>
   <div class="cal-body">
-    <section class="cal-card">
+    <section class="cal-card glass">
       <div class="cal-grid-head">${WEEKDAYS.map((d) => `<span>${d}</span>`).join("")}</div>
-      <div class="cal-grid" id="cal-grid" aria-live="polite"></div>
+      <div class="cal-grid" id="cal-grid"></div>
       <div class="legend cal-legend">
         <span><i class="dot holiday"></i>Public holiday</span>
         <span><i class="dot festival"></i>Festival</span>
@@ -32,13 +34,13 @@ const SKELETON = `
         <span><i class="dot live"></i>Confirmed by a live calendar</span>
       </div>
     </section>
-    <aside class="cal-card cal-upcoming" aria-labelledby="cal-up-title">
-      <h2 id="cal-up-title">Coming up</h2>
+    <aside class="cal-card glass cal-upcoming" aria-labelledby="cal-up-title">
+      <h2 id="cal-up-title">${icon("star")}Coming up</h2>
       <ul id="cal-upcoming-list" class="cal-up-list"></ul>
     </aside>
   </div>`;
 
-function dayCell(d, isCurrentMonth) {
+function dayCell(d, i) {
   if (!d) return `<div class="cal-cell empty" aria-hidden="true"></div>`;
   const tags = [];
   if (d.holiday) tags.push(`<i class="dot holiday" title="Public holiday"></i>`);
@@ -46,9 +48,10 @@ function dayCell(d, isCurrentMonth) {
   if (d.exam_week || d.formative_test) tags.push(`<i class="dot exam" title="${d.exam_week ? "University exam" : "Formative test"} week"></i>`);
   if (d.rain_holiday) tags.push(`<i class="dot rain" title="Rain holiday"></i>`);
   const label = d.holiday_name || d.event_note || (d.festival ? "Festival" : d.exam_week ? "Exam week" : d.formative_test ? "Test week" : "");
-  const classes = ["cal-cell", !isCurrentMonth && "muted", d.is_today && "today", d.is_weekend && "weekend",
-    (d.holiday || d.festival) && "flagged"].filter(Boolean).join(" ");
-  return `<button type="button" class="${classes}" data-date="${d.date}" aria-label="${esc(d.weekday)} ${d.date}${label ? `, ${esc(label)}` : ""}">
+  const selected = d.date === mainState.date;
+  const classes = ["cal-cell", d.is_today && "today", selected && "selected", d.is_weekend && "weekend",
+    (d.holiday || d.festival) && "flagged", (d.exam_week || d.formative_test) && "exam"].filter(Boolean).join(" ");
+  return `<button type="button" class="${classes}" style="--i:${i}" data-date="${d.date}" aria-label="${esc(d.weekday)} ${d.date}${label ? `, ${esc(label)}` : ""}${d.is_today ? ", today" : ""}">
     <span class="cal-daynum">${Number(d.date.slice(-2))}</span>
     ${d.live_confirmed ? `<i class="dot live" title="Confirmed by a live calendar: ${esc(d.live_holiday_name)}"></i>` : ""}
     <span class="cal-dots">${tags.join("")}</span>
@@ -72,46 +75,58 @@ export function mountCalendar(root) {
     return cache.get(m);
   }
 
-  async function render() {
+  async function render(direction = "") {
+    const shown = month;
     q("#cal-month-label").textContent = MONTH_NAME(month);
     const data = await load(month);
+    if (shown !== month) return;   // a newer month was asked for while this one loaded
     if (data.error) {
       q("#cal-grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Could not load the calendar. ${esc(data.error.message || "")}</div>`;
       q("#cal-live").textContent = "";
       return;
     }
     q("#cal-live").innerHTML = data.live_checked
-      ? `<span class="cal-live-ok">&#9679; Cross-checked with ${esc(data.live_source)}.</span>`
-      : `<span class="cal-live-off">&#9675; Showing the project's own calendar only (live check unavailable right now).</span>`;
-    const first = new Date(`${month}-01T00:00:00`);
-    const lead = first.getDay();
+      ? `<span class="cal-live-ok"><i></i>Cross-checked with ${esc(data.live_source)}.</span>`
+      : `<span class="cal-live-off"><i></i>Showing the project's own calendar only (live check unavailable right now).</span>`;
+    const lead = new Date(`${month}-01T00:00:00`).getDay();
     const cells = Array(lead).fill(null).concat(data.days);
-    q("#cal-grid").innerHTML = cells.map((d) => dayCell(d, true)).join("");
+    const grid = q("#cal-grid");
+    grid.innerHTML = cells.map((d, i) => dayCell(d, i)).join("");
+    replay(grid, direction ? `slide-${direction}` : "fade-in", 800);
 
     // Coming up: this month plus next, from today onward. Multi day runs (an exam week, a test week)
     // are collapsed to their first day, so one event shows once rather than once per day.
     const next = await load(addMonths(month, 1));
+    if (shown !== month) return;
     const today = mainState.health?.today;
     const all = [...data.days, ...(next.days || [])];
     const startsRun = (d, i, key) => d[key] && !all[i - 1]?.[key];
     const upcoming = all.filter((d, i) => (!today || d.date >= today) &&
       (d.holiday || d.festival || startsRun(d, i, "exam_week") || startsRun(d, i, "formative_test"))).slice(0, 7);
-    q("#cal-upcoming-list").innerHTML = upcoming.length ? upcoming.map((d) => `<li>
-        <span class="cal-up-date">${new Date(`${d.date}T00:00:00`).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })}</span>
-        <span class="cal-up-what">${esc(d.holiday_name || (d.festival ? "Festival" : d.exam_week ? "University exam week begins" : "Test week begins"))}</span>
-        ${d.live_confirmed ? `<i class="dot live" title="Confirmed online"></i>` : ""}
-      </li>`).join("") : `<li class="cal-up-empty">Nothing flagged in the next two months.</li>`;
+    const kind = (d) => (d.holiday ? "holiday" : d.festival ? "festival" : "exam");
+    q("#cal-upcoming-list").innerHTML = upcoming.length ? upcoming.map((d, i) => {
+      const day = new Date(`${d.date}T00:00:00`);
+      return `<li style="--i:${i}"><button type="button" class="cal-up-item" data-date="${d.date}">
+        <span class="cal-up-date ${kind(d)}"><b>${day.getDate()}</b>${day.toLocaleDateString("en-US", { month: "short" })}</span>
+        <span class="cal-up-what">${esc(d.holiday_name || (d.festival ? "Festival" : d.exam_week ? "University exam week begins" : "Test week begins"))}
+          <small>${day.toLocaleDateString("en-US", { weekday: "long" })}</small></span>
+        ${d.live_confirmed ? `<i class="dot live" title="Confirmed online"></i>` : ""}</button></li>`;
+    }).join("") : `<li class="cal-up-empty">Nothing flagged in the next two months.</li>`;
   }
 
-  q("#cal-prev").addEventListener("click", () => { month = addMonths(month, -1); render(); });
-  q("#cal-next").addEventListener("click", () => { month = addMonths(month, 1); render(); });
-  q("#cal-today").addEventListener("click", async () => { month = await todayMonth(); render(); });
-  q("#cal-grid").addEventListener("click", (e) => {
+  const open = (e) => {
     const btn = e.target.closest("[data-date]");
     if (!btn) return;
     setDate(btn.dataset.date);
     location.hash = "service";
-  });
+  };
+  q("#cal-prev").addEventListener("click", () => { month = addMonths(month, -1); render("prev"); });
+  q("#cal-next").addEventListener("click", () => { month = addMonths(month, 1); render("next"); });
+  q("#cal-today").addEventListener("click", async () => { const m = await todayMonth(); const dir = m < month ? "prev" : m > month ? "next" : ""; month = m; render(dir); });
+  q("#cal-grid").addEventListener("click", open);
+  q("#cal-upcoming-list").addEventListener("click", open);
 
   todayMonth().then((m) => { month = m; render(); });
+  // keep the highlighted day in step with the day open on the other views
+  subscribe((s) => q("#cal-grid").querySelectorAll("[data-date]").forEach((c) => c.classList.toggle("selected", c.dataset.date === s.date)));
 }
