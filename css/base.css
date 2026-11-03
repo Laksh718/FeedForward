@@ -1,0 +1,43 @@
+/* Shared basics: reset, view switch bar, buttons, focus, banner. Each view has its own colours and fonts. */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #15291F; background: #EEF1EC; }
+body[data-view="landing"] { background: #0F1A14; }
+h1, h2, h3, p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+
+:focus-visible { outline: 3px solid #1E6FD9; outline-offset: 2px; border-radius: 4px; }
+.skip-link { position: absolute; left: -999px; top: 0; background: #fff; padding: 12px 16px; z-index: 50; }
+.skip-link:focus { left: 8px; top: 8px; }
+
+/* view switch bar */
+.viewbar { display: flex; align-items: center; gap: 12px; padding: 6px 16px; background: #0F1A14; color: #DCE5DF;
+  font: 500 13px/1 "Instrument Sans", system-ui, sans-serif; }
+.viewbar-tabs { display: flex; gap: 4px; }
+.viewbar-tabs button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: #DCE5DF; }
+.viewbar-tabs { flex-wrap: wrap; }
+@media (max-width: 480px) { .viewbar { padding: 4px 8px; gap: 6px; } .viewbar-tabs button { padding: 0 10px; } }
+.viewbar-tabs button[aria-selected="true"] { background: #fff; color: #0F1A14; font-weight: 600; }
+
+/* shared button shapes (colours come from the view) */
+.btn { min-height: 44px; padding: 0 20px; border-radius: 8px; border: 2px solid transparent; font-weight: 600; font-size: 15px; }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+
+.banner { margin: 16px; padding: 14px 18px; border-radius: 10px; background: #FBE3DC; color: #7A2514; border: 1px solid #E8B7AA; font: 500 15px/1.4 system-ui, sans-serif; }
+.banner strong { display: block; margin-bottom: 2px; }
+
+/* online demo (GitHub Pages) notice under the view bar, and the what if hint */
+.demo-strip { margin: 0; padding: 8px 16px; background: #1B2C22; color: #C9D6CD; border-top: 1px solid #2A3F32;
+  font: 400 13px/1.45 "Instrument Sans", system-ui, sans-serif; }
+.demo-strip strong { color: #fff; font-weight: 600; }
+.demo-strip a { color: #9CC4AE; font-weight: 600; white-space: nowrap; }
+.wi-demo { margin: 10px 0 0; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tooltip { position: fixed; pointer-events: none; z-index: 40; background: #15291F; color: #fff; padding: 8px 10px; border-radius: 8px; font-size: 13px; line-height: 1.4; max-width: 240px; }
+.empty { padding: 28px 20px; text-align: center; color: #5A6B60; }
+.empty strong { display: block; color: inherit; margin-bottom: 4px; font-size: 16px; }
+.num { font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

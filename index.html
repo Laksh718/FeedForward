@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="feedforward-mode" content="static">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FeedForward</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/landing.css">
+  <link rel="stylesheet" href="css/service.css">
+  <link rel="stylesheet" href="css/desk.css">
+  <link rel="stylesheet" href="css/calendar.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body data-view="landing">
+  <a class="skip-link" href="#main">Skip to the forecast</a>
+  <nav class="viewbar" aria-label="Choose a view">
+    <span class="viewbar-label">View</span>
+    <div class="viewbar-tabs" role="tablist">
+      <button role="tab" data-view-tab="landing" aria-selected="true">Home</button>
+      <button role="tab" data-view-tab="service" aria-selected="false">Service board</button>
+      <button role="tab" data-view-tab="desk" aria-selected="false">Forecast desk</button>
+      <button role="tab" data-view-tab="calendar" aria-selected="false">Calendar</button>
+      <button role="tab" data-view-tab="admin" aria-selected="false">Daily log</button>
+    </div>
+  </nav>
+  <div id="banner" class="banner" role="alert" hidden></div>
+  <main id="main">
+    <div id="view-landing" class="view" data-view-panel="landing"></div>
+    <div id="view-service" class="view" data-view-panel="service" hidden></div>
+    <div id="view-desk" class="view" data-view-panel="desk" hidden></div>
+    <div id="view-calendar" class="view" data-view-panel="calendar" hidden></div>
+    <div id="view-admin" class="view" data-view-panel="admin" hidden></div>
+  </main>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
