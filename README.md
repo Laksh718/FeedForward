@@ -89,14 +89,21 @@ The tests need the processed data and the final model: run the preprocessing ste
 
 ## The dashboard
 
-Open the server address. The bar at the top switches the view:
+Open the server address. It opens on a **Home** landing page (the pipeline, in plain language, and a shortcut to each view). The bar at
+the top switches the view:
 
-- **Service board** (default): the headline ("Cook N portions for lunch, M fewer than the usual plan"), dish tickets with range bars, the week
-  chart, "Try a what if" and the copilot. **Approve this plan** saves the plan; **Change quantities** lets you edit each dish first.
+- **Service board** (default once you enter): the headline ("Cook N portions for lunch, M fewer than the usual plan"), dish tickets with range
+  bars, the week chart, "Try a what if" and the copilot. **Approve this plan** saves the plan; **Change quantities** lets you edit each dish
+  first. A search box plus category and diet filters narrow the dish tickets down without changing the underlying forecast.
 - **Forecast desk**: past week and next 7 days in one chart, the dish by dish table with low end, most likely, high end, usual plan and cook,
   and the surplus risk panel.
-- **Daily log** (PIN): five sections (day context, attendance, dishes and quantities, ingredients, review and save), recent entries with edit and
-  delete, CSV export and "Forecast versus actual".
+- **Calendar**: a month view of the real academic calendar (Tamil Nadu public holidays, festivals, exam and test phases), cross-checked
+  against a live public holiday calendar (`GET /api/calendar`) so flagged days show "confirmed online". Click a day to open the Service board
+  for it.
+- **Daily log** (PIN): a status strip (real days logged, total rows, last entry, progress toward the 28 real day retraining guideline), five
+  sections (day context, attendance, dishes and quantities, ingredients, review and save), **bulk import from CSV** (pick a table, upload or
+  paste a CSV shaped like its export, preview it, then import; a bad row is skipped and listed, the rest of the file still goes in), recent
+  entries with edit and delete, CSV export and "Forecast versus actual".
 
 Click a day in a chart to see that day. "Main dishes" are the dishes the CVAE forecasts; "Show all dishes" adds the support dishes (bread, butter, chutney).
 
@@ -111,7 +118,8 @@ Click a day in a chart to see that day. "Main dishes" are the dishes the CVAE fo
 | POST /api/review, GET /api/review | Approve or Send back with a forecast snapshot; latest decision |
 | POST /api/chat | one explanation: answer, source (llm, template or rules), intent, figures used |
 | GET /api/dishes, /api/ingredients | catalogues |
-| /api/admin/... (header `X-Admin-Pin`) | menu, validate, day (save), recent, entry (soft delete), export, fill-recipes, forecast-vs-actual |
+| GET /api/calendar?month=YYYY-MM | one month of the academic calendar, cross-checked against a live public holiday calendar |
+| /api/admin/... (header `X-Admin-Pin`) | menu, validate, day (save), recent, entry (soft delete), export, import (bulk CSV), fill-recipes, forecast-vs-actual, summary |
 
 Errors always say what happened and how to fix it. CORS is closed unless `CORS_ORIGINS` is set.
 
@@ -138,8 +146,9 @@ Errors always say what happened and how to fix it. CORS is closed unless `CORS_O
 - **GAN rare event generator:** write synthetic rows with the columns of `artifacts/timeseries/panel.parquet` plus `expected_attendance`
   and run `python -m feedforward.models.train --extra-data FILE`. `plugins/gan_extra_data.py` validates them; they are down weighted
   (`EXTRA_DATA_WEIGHT`) and never used for validation, calibration or testing.
-- **Surplus and anomaly detector:** implement `assess(usual_plan, p50, p90)` from `plugins/surplus_detector_stub.py` and pass the object to
-  `ForecastService(detector=...)`. The dashboard shows whatever level it returns (low, medium, high). The inventory feature table
-  (`artifacts/timeseries/inventory_features.parquet`) holds days to expiry, stock cover and kilograms expiring soon per dish and date.
+- **Surplus and anomaly detector:** `ForecastService` uses `models/surplus_detector.InventoryAwareSurplusDetector` by default, combining
+  the usual plan versus forecast range (demand risk) with days to expiry, stock cover and kilograms expiring soon per dish and date from
+  `artifacts/timeseries/inventory_features.parquet` (inventory risk); the higher of the two wins. Swap it for another implementation of
+  `assess(usual_plan, p50, p90, **inventory_kwargs)` (see `plugins/surplus_detector_stub.py` for the interface) via `ForecastService(detector=...)`.
 - **Decision logic:** read `forecast_log.csv` (approved plans with `approved_qty`) and `ForecastService.forecast(...)`; the copilot never acts.
 - **Database:** implement the `LogStore` methods in `admin/store.py` and change `get_store()`.
