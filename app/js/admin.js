@@ -4,6 +4,14 @@ import { SLOTS, WEATHER_TYPES, cap, esc, fmt } from "./util.js";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const TABLES = ["day_context", "attendance", "kitchen_log", "ingredient_usage"];
+const TABLE_LABEL = { day_context: "Day context", attendance: "Attendance", kitchen_log: "Dishes and quantities", ingredient_usage: "Ingredients used" };
+const TEMPLATE_COLUMNS = {
+  day_context: ["date", "temp_max_c", "temp_min_c", "condition", "special_day", "special_day_type", "special_day_name",
+    "exam_week", "exam_type", "festival", "festival_name", "festival_scale"],
+  attendance: ["date", "meal_slot", "attendance", "students_present"],
+  kitchen_log: ["date", "meal_slot", "dish_id", "prepared_qty", "topup_qty", "consumed_qty", "leftover_qty", "ran_out_early", "unmet_qty"],
+  ingredient_usage: ["date", "ingredient", "used_kg"],
+};
 const SPECIAL_TYPES = { holiday: "Holiday", rain_holiday: "Rain holiday", campus_event: "Campus event", other: "Other" };
 const WHY = "We ask for portions eaten or left over, and whether the dish ran out, because without them a row cannot be used for learning. "
   + "Portions wanted are the portions eaten plus any not served.";
@@ -19,6 +27,7 @@ const SKELETON = `
       <input id="ad-pin" type="password" autocomplete="off" placeholder="PIN" style="min-height:44px;padding:0 12px;border:1px solid #B7C2B8;border-radius:8px">
       <button class="btn btn-primary" type="submit">Unlock</button></form><div id="ad-gate-msg"></div></section>
   <div id="ad-app" hidden>
+    <div class="ad-stats" id="ad-stats"></div>
     <section class="ad-card" aria-labelledby="ad-s1"><h2 id="ad-s1">1. Day context</h2>
       <p class="ad-help">Past dates can be filled in later. Future dates take expected weather and special day information only.</p>
       <div class="ad-grid">
@@ -59,6 +68,23 @@ const SKELETON = `
       <div class="ad-field" style="max-width:320px"><label for="ad-by">Entered by (optional)</label><input id="ad-by" maxlength="60"></div>
       <div class="ad-actions"><button class="btn" id="ad-check" type="button">Check entry</button><button class="btn btn-primary" id="ad-save" type="button">Save day</button></div>
       <div id="ad-msg" aria-live="polite"></div></section>
+    <section class="ad-card" aria-labelledby="ad-s-import"><h2 id="ad-s-import">Bulk import from CSV</h2>
+      <p class="ad-help">Already have records in a spreadsheet? Import a whole range of days at once instead of typing them in one by one.
+        Each file holds one table (pick which below); a row for a date that already has entries replaces it. A bad row is skipped and
+        listed, the rest of the file is still imported.</p>
+      <div class="ad-grid">
+        <div class="ad-field"><label for="ad-imp-table">Which table</label>
+          <select id="ad-imp-table">${TABLES.map((t) => `<option value="${t}">${TABLE_LABEL[t]}</option>`).join("")}</select></div>
+        <div class="ad-field"><label for="ad-imp-file">CSV file</label><input id="ad-imp-file" type="file" accept=".csv,text/csv"></div>
+      </div>
+      <div class="ad-actions" style="margin-top:0"><button type="button" class="btn btn-small" id="ad-imp-template">Download a template for this table</button></div>
+      <p class="ad-help" style="margin-top:12px">Or paste CSV text directly:</p>
+      <label class="sr-only" for="ad-imp-text">CSV text</label>
+      <textarea id="ad-imp-text" rows="5" placeholder="date,meal_slot,attendance&#10;2026-10-06,lunch,3200" style="width:100%;padding:10px;border:1px solid #B7C2B8;border-radius:8px;font:13px/1.4 monospace"></textarea>
+      <div id="ad-imp-preview"></div>
+      <div class="ad-actions"><button class="btn" id="ad-imp-preview-btn" type="button">Preview</button>
+        <button class="btn btn-primary" id="ad-imp-go" type="button">Import</button></div>
+      <div id="ad-imp-msg" aria-live="polite"></div></section>
     <section class="ad-card" aria-labelledby="ad-s6"><h2 id="ad-s6">Recent entries</h2>
       <div class="ad-tablewrap"><table><thead><tr><th>Date</th><th>Context</th><th>Attendance</th><th>Dishes</th><th>Ingredients</th><th>Saved at</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="ad-recent"></tbody></table></div>
       <div class="ad-actions">${TABLES.map((t) => `<button class="btn btn-small" data-export="${t}" type="button">Export ${t}.csv</button>`).join("")}</div></section>
@@ -228,8 +254,68 @@ export function mountAdmin(root) {
     } catch (e) { showMsg(errText(e), "bad"); }
   });
 
+  // ---------- bulk import from CSV
+  function csvPreviewRows(text) {
+    const lines = text.replace(/\r\n/g, "\n").split("\n").filter((l) => l.trim() !== "");
+    const split = (l) => l.split(",").map((c) => c.trim());
+    return { header: lines[0] ? split(lines[0]) : [], rows: lines.slice(1, 6).map(split), total: Math.max(0, lines.length - 1) };
+  }
+  $("#ad-imp-template").addEventListener("click", () => {
+    const table = $("#ad-imp-table").value;
+    const text = `${TEMPLATE_COLUMNS[table].join(",")}\n`;
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([text], { type: "text/csv" })), download: `${table}_template.csv` });
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  async function importText() {
+    const file = $("#ad-imp-file").files[0];
+    return file ? file.text() : $("#ad-imp-text").value;
+  }
+  $("#ad-imp-preview-btn").addEventListener("click", async () => {
+    const text = (await importText()).trim();
+    const box = $("#ad-imp-preview");
+    if (!text) { box.innerHTML = `<p class="ad-help">Choose a file or paste some CSV text first.</p>`; return; }
+    const { header, rows, total } = csvPreviewRows(text);
+    const expected = new Set(TEMPLATE_COLUMNS[$("#ad-imp-table").value]);
+    const unknown = header.filter((h) => !expected.has(h));
+    box.innerHTML = `<p class="ad-help">${total} data row${total === 1 ? "" : "s"} found. Columns: ${header.map((h) => esc(h)).join(", ")}.
+        ${unknown.length ? `<br>Not expected for this table (ignored): ${unknown.map((h) => esc(h)).join(", ")}.` : ""}</p>
+      <div class="ad-tablewrap"><table><thead><tr>${header.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      ${total > rows.length ? `<p class="ad-help">Showing the first ${rows.length} rows.</p>` : ""}`;
+  });
+  $("#ad-imp-go").addEventListener("click", async () => {
+    const csv_text = (await importText()).trim();
+    const msg = $("#ad-imp-msg");
+    if (!csv_text) { msg.innerHTML = `<div class="ad-msg warn">Choose a file or paste some CSV text first.</div>`; return; }
+    msg.innerHTML = `<div class="ad-msg">Importing&hellip;</div>`;
+    try {
+      const r = await api.post("/admin/import", { table: $("#ad-imp-table").value, csv_text });
+      const errs = r.row_errors.length ? `<div class="ad-msg ${r.dates_saved ? "warn" : "bad"}"><strong>${r.row_errors.length} row(s) could not be used</strong>
+        ${list(r.row_errors.map((e) => (e.row ? `Row ${e.row}: ${e.message}` : e.message)))}</div>` : "";
+      msg.innerHTML = `<div class="ad-msg ${r.dates_saved ? "ok" : "warn"}"><strong>${r.message}</strong>${r.dates.length ? ` Dates: ${r.dates.join(", ")}.` : ""}</div>${errs}${warnHtml(r.warnings)}`;
+      if (r.dates_saved) { refreshSide(); if (r.dates.includes($("#ad-date").value)) loadDay($("#ad-date").value); }
+    } catch (e) { msg.innerHTML = `<div class="ad-msg bad">${errText(e)}</div>`; }
+  });
+
+  // ---------- stats strip
+  async function refreshStats() {
+    try {
+      const s = await api.get("/admin/summary");
+      const pct = Math.min(100, Math.round((s.real_days / s.min_real_days) * 100));
+      $("#ad-stats").innerHTML = `
+        <div class="ad-stat"><span class="ad-stat-v">${s.real_days}</span><span class="ad-stat-l">real day${s.real_days === 1 ? "" : "s"} logged</span></div>
+        <div class="ad-stat"><span class="ad-stat-v">${Object.values(s.rows_by_table).reduce((a, b) => a + b, 0)}</span><span class="ad-stat-l">rows across all tables</span></div>
+        <div class="ad-stat"><span class="ad-stat-v">${s.last_entered_at ? esc(s.last_entered_at.replace("T", " ")) : "Never"}</span><span class="ad-stat-l">last entry saved</span></div>
+        <div class="ad-stat ad-stat-wide"><div class="ad-progress" role="progressbar" aria-valuenow="${s.real_days}" aria-valuemin="0" aria-valuemax="${s.min_real_days}">
+          <div class="ad-progress-bar ${s.ready_for_retraining ? "ready" : ""}" style="width:${pct}%"></div></div>
+          <span class="ad-stat-l">${s.ready_for_retraining ? "Enough real days to include in retraining." : `${s.min_real_days - s.real_days} more real day(s) recommended before retraining with real data.`}</span></div>`;
+    } catch { $("#ad-stats").innerHTML = ""; }
+  }
+
   // ---------- recent entries, export, forecast versus actual
   async function refreshSide() {
+    refreshStats();
     try {
       const { days } = await api.get("/admin/recent");
       $("#ad-recent").innerHTML = days.map((d) => `<tr><td>${esc(d.date)} ${esc(d.weekday.slice(0, 3))}</td><td>${d.day_context}</td><td>${d.attendance}</td><td>${d.kitchen_log}</td><td>${d.ingredient_usage}</td>

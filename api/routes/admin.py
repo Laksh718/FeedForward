@@ -11,8 +11,10 @@ from fastapi.responses import PlainTextResponse
 from api import services
 from api.deps import error, get_service, reload_service
 from feedforward import config as C
+from feedforward.admin import csv_import
 from feedforward.admin.compare import forecast_vs_actual
-from feedforward.admin.schemas import DaySaveIn, DeleteIn, RecipeFillIn
+from feedforward.admin.history import real_day_count
+from feedforward.admin.schemas import CsvImportIn, DaySaveIn, DeleteIn, RecipeFillIn
 from feedforward.admin.store import TABLES, get_store
 from feedforward.admin.validation import check_future, sanity_warnings
 from feedforward.data.features import menu_rows_for
@@ -84,6 +86,17 @@ def save(entry: DaySaveIn, svc: ForecastService = Depends(get_service)) -> dict:
     return {"saved": counts, "warnings": warnings, "message": f"Saved {entry.date}. Forecasts now use this day."}
 
 
+@router.get("/summary")
+def summary() -> dict:
+    """Quick status of the real data logged so far, and how close it is to being useful for retraining."""
+    store = get_store()
+    frames = {t: store.read(t) for t in TABLES}
+    last_entered = max((f["entered_at"].max() for f in frames.values() if not f.empty), default=None)
+    days = real_day_count(store)
+    return {"real_days": days, "min_real_days": C.MIN_REAL_DAYS, "ready_for_retraining": days >= C.MIN_REAL_DAYS,
+            "rows_by_table": {t: len(f) for t, f in frames.items()}, "last_entered_at": last_entered}
+
+
 @router.get("/recent")
 def recent(limit: int = Query(15, ge=1, le=100)) -> dict:
     """The most recently entered dates with how many rows each has."""
@@ -118,6 +131,33 @@ def export(table: str) -> PlainTextResponse:
         raise ValueError(f"Unknown table '{table}'. Choose one of {sorted(TABLES)}.")
     return PlainTextResponse(get_store().export_csv(table), media_type="text/csv",
                              headers={"Content-Disposition": f'attachment; filename="{table}.csv"'})
+
+
+@router.post("/import")
+def import_csv(body: CsvImportIn, svc: ForecastService = Depends(get_service)) -> dict:
+    """Bulk import real entries for one table from CSV text (see feedforward.admin.csv_import for the expected
+    columns, the same ones the matching export uses). Every date that parses is checked and saved exactly like
+    the Daily log form; a bad row is skipped and reported rather than stopping the whole file."""
+    entries, errors = csv_import.parse(body.table, body.csv_text)
+    today = services.today()
+    saved_dates, warnings = [], []
+    ingredient_master = _read("inventory_ingredients")
+    for d, entry in sorted(entries.items()):
+        try:
+            check_future(entry, today)
+        except ValueError as exc:
+            errors.append({"row": 0, "message": str(exc)})
+            continue
+        ws = sanity_warnings(entry, svc, ingredient_master)
+        get_store().save_day(entry)
+        saved_dates.append(d)
+        warnings += [{"date": d, **w} for w in ws]
+    if saved_dates:
+        reload_service()
+        week_view._calendar_flags.cache_clear()
+    return {"table": body.table, "dates_saved": len(saved_dates), "dates": saved_dates, "row_errors": errors,
+            "warnings": warnings, "message": f"Imported {len(saved_dates)} day(s) into {body.table}."
+            + (f" {len(errors)} row(s) could not be used." if errors else "")}
 
 
 @router.post("/fill-recipes")

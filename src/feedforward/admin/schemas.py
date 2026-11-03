@@ -132,3 +132,10 @@ class RecipeFillIn(BaseModel):
     """Prepared portions per dish, used to pre fill ingredient quantities from the recipes."""
 
     rows: list[dict] = Field(max_length=200)
+
+
+class CsvImportIn(BaseModel):
+    """A CSV file's text, to bulk import real entries for one table (see admin.csv_import)."""
+
+    table: Literal["day_context", "attendance", "kitchen_log", "ingredient_usage"]
+    csv_text: str = Field(min_length=1, max_length=5_000_000)

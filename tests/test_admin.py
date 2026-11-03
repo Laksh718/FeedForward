@@ -150,6 +150,27 @@ def test_fill_from_recipes(client):
     assert {i["ingredient"] for i in r["ingredients"]} & {"rice"}
 
 
+def test_csv_import_attendance(client):
+    csv_text = ("date,meal_slot,attendance,students_present\n"
+                f"{DAY},lunch,3200,3500\n{DAY},dinner,2900,\n2026-10-02,lunch,99999,\n")
+    r = client.post("/api/admin/import", json={"table": "attendance", "csv_text": csv_text}, headers=PIN).json()
+    assert r["dates_saved"] == 1 and r["dates"] == [DAY]
+    assert len(r["row_errors"]) == 1 and "4000" in r["row_errors"][0]["message"]
+    saved = client.get("/api/admin/day", params={"date": DAY}, headers=PIN).json()
+    assert {a["meal_slot"]: a["attendance"] for a in saved["attendance"]} == {"lunch": 3200, "dinner": 2900}
+
+
+def test_csv_import_kitchen_log_future_date_is_rejected(client):
+    csv_text = f"date,meal_slot,dish_id,prepared_qty,consumed_qty\n2026-10-20,lunch,D120,3000,2800\n"
+    r = client.post("/api/admin/import", json={"table": "kitchen_log", "csv_text": csv_text}, headers=PIN).json()
+    assert r["dates_saved"] == 0 and "future" in r["row_errors"][0]["message"]
+
+
+def test_csv_import_unknown_table_is_rejected(client):
+    r = client.post("/api/admin/import", json={"table": "nope", "csv_text": "date\n2026-10-06\n"}, headers=PIN)
+    assert r.status_code == 422
+
+
 def test_forecast_versus_actual(client, isolated):
     client.post("/api/review", json={"date": DAY, "meal_slot": "lunch", "decision": "approve"})
     assert client.get("/api/admin/forecast-vs-actual", headers=PIN).json()["summary"] is None      # no actuals yet
