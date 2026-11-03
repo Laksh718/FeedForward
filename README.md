@@ -63,7 +63,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 pip install -e .
-Copy-Item .env.example .env        # then edit .env: GROQ_API_KEY, GROQ_MODEL, ADMIN_PIN
+Copy-Item .env.example .env        # then edit .env: GEMINI_API_KEY, ADMIN_PIN
 ```
 
 macOS or Linux:
@@ -73,13 +73,14 @@ python3 -m venv .venv_mac
 source .venv_mac/bin/activate
 pip install -r requirements.txt
 pip install -e .
-cp .env.example .env               # then edit .env: GROQ_API_KEY, GROQ_MODEL, ADMIN_PIN
+cp .env.example .env               # then edit .env: GEMINI_API_KEY, ADMIN_PIN
 ```
 
 Then run the pipeline steps below once (they build `artifacts/`) and start the server with `uvicorn api.main:app --reload`.
 
-`.env` keys: `GROQ_API_KEY` (optional: without it the copilot uses standard wording), `GROQ_MODEL` (check the name is still available
-in your Groq console), `ADMIN_PIN` (needed for the Daily log). Secrets stay in `.env`; it is never committed.
+`.env` keys: `GEMINI_API_KEY` (optional, from [Google AI Studio](https://aistudio.google.com/apikey): without it the copilot uses standard
+wording), `GEMINI_MODEL` (default `gemini-flash-latest`, Google's alias for the current Flash model), `ADMIN_PIN` (needed for the Daily log).
+`GROQ_API_KEY` and `GROQ_MODEL` still work as an alternative and are used only when there is no Gemini key. Secrets stay in `.env`; it is never committed.
 
 ## How to run each part (from the project folder, venv active)
 
@@ -189,7 +190,7 @@ the Daily log), deploy the repository as a container. The `Dockerfile` installs 
    or in the dashboard choose **New** > **Blueprint** and pick this repository. If the repository is private, let Render's GitHub app see it.
 3. Render reads `render.yaml` (a free Docker web service, health check on `/api/health`, redeploy on every push to `main`) and asks for:
    - `ADMIN_PIN`: a long random PIN, not 1234 (anyone with the link can reach the Daily log page). Until it is set, the Daily log is off.
-   - `GROQ_API_KEY`: optional. Use a separate key for this deployment, because every visitor's copilot question uses it. Without a key
+   - `GEMINI_API_KEY`: optional. Use a separate key for this deployment, because every visitor's copilot question uses it. Without a key
      the copilot answers in its template wording.
 4. Apply. The first build takes several minutes (torch); the app is then served at the `*.onrender.com` address Render shows.
 
