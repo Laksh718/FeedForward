@@ -1,20 +1,20 @@
-# Render blueprint: the full FeedForward server (API + dashboard) on Render's free web service.
-# New > Blueprint in the Render dashboard (or the "Deploy to Render" link in the README) reads this file.
+# Exported from Render on 2026-11-03T16:59:23Z
+version: "1"
 services:
-  - type: web
-    name: feedforward
-    runtime: docker
-    plan: free
-    region: singapore          # closest to the kitchen; any Render region works
-    branch: main
-    autoDeploy: true           # every push to main redeploys
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /api/health
-    envVars:
-      # Asked for when the blueprint is created; never stored in the repository.
-      - key: ADMIN_PIN         # a long random PIN; the Daily log stays switched off until it is set
-        sync: false
-      - key: GEMINI_API_KEY    # optional: without it the copilot answers in its template wording
-        sync: false
-      - key: GEMINI_MODEL
-        value: gemini-3.5-flash-lite
+- type: web
+  name: feedforward
+  runtime: docker
+  repo: https://github.com/Laksh718/FeedForward
+  plan: free
+  envVars:
+  - key: GEMINI_API_KEY
+    sync: false
+  - key: ADMIN_PIN
+    sync: false
+  - key: GEMINI_MODEL
+    sync: false
+  region: singapore
+  healthCheckPath: /api/health
+  dockerContext: .
+  dockerfilePath: ./Dockerfile
+  autoDeployTrigger: commit
