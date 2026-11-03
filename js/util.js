@@ -63,3 +63,12 @@ export const SOURCE_NOTE = {
   template: "Standard wording from the figures on this page (language model not used).",
   demo: "Online demo note (the copilot itself runs on the FeedForward server).",
 };
+
+// The note for one answer, saying why the standard wording was used when the language model was not.
+export function sourceNote(m) {
+  if (m.source !== "template" || !m.reason) return SOURCE_NOTE[m.source] ?? "";
+  if (m.reason.includes("could not be reached")) return "Standard wording from the figures on this page: the language model was busy or unreachable, so ask again in a moment for its wording.";
+  if (m.reason.includes("not in the data")) return "Standard wording from the figures on this page: the language model's answer quoted a figure that is not in the data, so it was not used.";
+  if (m.reason.includes("not set")) return "Standard wording from the figures on this page (no language model key on this server).";
+  return SOURCE_NOTE.template;
+}

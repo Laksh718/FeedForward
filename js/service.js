@@ -5,7 +5,7 @@ import { liquid, replay, rollNumber, setHTML } from "./fx.js";
 import { icon } from "./icons.js";
 import { logoMark } from "./logo.js";
 import { ask, review, setAdjusted, setDate, setEditing, setScope, setSlot, state, subscribe } from "./state.js";
-import { SLOTS, SOURCE_NOTE, cap, esc, fmt, isoDay, parseDay, riskLabel, shortDate, weekdayName } from "./util.js";
+import { SLOTS, cap, esc, fmt, isoDay, parseDay, riskLabel, shortDate, sourceNote, weekdayName } from "./util.js";
 import { mountWhatIf } from "./whatif.js";
 
 const CHIPS = ["Explain the range", "What if it rains?", "Summarise the week"];
@@ -72,11 +72,11 @@ const SKELETON = `
       <div class="chat-log" id="sv-log" aria-live="polite"></div>
       <div class="chips">${CHIPS.map((c) => `<button type="button" class="chip-btn">${c}</button>`).join("")}</div>
       <form class="chat-form" id="sv-form"><label class="sr-only" for="sv-q">Ask about a dish or a change</label>
-        <input id="sv-q" autocomplete="off" placeholder="Ask about a dish or a change"><button class="btn btn-primary send-btn" type="submit" aria-label="Send">${icon("send")}</button></form>
+        <input id="sv-q" autocomplete="off" placeholder="Ask what to cook, or about a dish or a change"><button class="btn btn-primary send-btn" type="submit" aria-label="Send">${icon("send")}</button></form>
     </aside>
   </div>`;
 
-const WELCOME = `<div class="bubble bot">Ask why a dish is above or below the usual plan, or what a change would do. I only use the numbers on this page.</div>`;
+const WELCOME = `<div class="bubble bot">Ask what to cook, how much of a dish to make, why a dish is above or below the usual plan, or what a change would do. I only use the numbers on this page.</div>`;
 const TYPING = `<div class="bubble bot typing" role="status" aria-label="The copilot is writing"><i></i><i></i><i></i></div>`;
 const RAIN = ["Dry", "Light rain", "Rain", "Heavy rain"];
 const DIET_LABEL = { veg: "Veg", nonveg: "Non-veg", egg: "Egg" };
@@ -301,7 +301,7 @@ export function mountService(root) {
     }
 
     const log = q("#sv-log");
-    const html = s.chat.length ? s.chat.map((m) => `<div class="bubble ${m.role}">${esc(m.text)}${SOURCE_NOTE[m.source] ? `<span class="src">${SOURCE_NOTE[m.source]}</span>` : ""}</div>`).join("") + (s.chatBusy ? TYPING : "")
+    const html = s.chat.length ? s.chat.map((m) => `<div class="bubble ${m.role}">${esc(m.text)}${sourceNote(m) ? `<span class="src">${sourceNote(m)}</span>` : ""}</div>`).join("") + (s.chatBusy ? TYPING : "")
       : WELCOME;
     if (setHTML(log, html)) {
       [...log.children].slice(s.chat.length ? chatCount : 0).forEach((el) => el.classList.add("fresh"));
