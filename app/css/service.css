@@ -140,6 +140,38 @@
 .wi-delta.up { color: var(--rust-ink); }
 .wi-delta.down { color: var(--green-ink); }
 
+/* what if impact: summary tiles, dish by dish and ingredients (shared by the Service board and the Forecast desk) */
+.wi-impact { margin-top: 16px; display: grid; gap: 16px; animation: rise .5s var(--ease) both; }
+.wi-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.wi-kpi { padding: 12px 14px; border-radius: var(--r); background: rgba(255, 255, 255, .72); border: 1px solid var(--edge); box-shadow: var(--hi); min-width: 0; }
+.wi-kpi-l { display: block; font-size: 12px; color: var(--muted); line-height: 1.3; }
+.wi-kpi-v { display: block; margin-top: 6px; font: 700 17px/1.2 var(--display); letter-spacing: -.01em; }
+.wi-kpi-c { display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: rgba(13, 42, 30, .06); color: var(--ink-2); }
+.wi-kpi-c.up { background: rgba(200, 67, 42, .1); color: var(--rust-ink); }
+.wi-kpi-c.down { background: rgba(18, 133, 90, .12); color: var(--green-ink); }
+.wi-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.wi-block { padding: 14px 16px; border-radius: var(--r-lg); background: rgba(255, 255, 255, .6); border: 1px solid var(--edge); min-width: 0; }
+.wi-block h3 { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+.wi-block h3 .ic { width: 18px; height: 18px; color: var(--brand); }
+.wi-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.wi-table th, .wi-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.wi-table thead th { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.wi-table th[scope=row], .wi-table thead th:first-child { text-align: left; white-space: normal; font-weight: 600; width: 34%; }
+.wi-table th[scope=row] small { display: block; font-weight: 400; font-size: 11.5px; color: var(--faint); }
+.wi-table th[scope=row] .pill { margin-left: 4px; padding: 1px 7px; font-size: 11px; }
+.wi-table tbody tr:last-child th, .wi-table tbody tr:last-child td { border-bottom: 0; }
+.wi-table small { color: var(--muted); font-weight: 400; }
+.wi-chg { font-weight: 700; }
+.wi-chg.up { color: var(--rust-ink); }
+.wi-chg.down { color: var(--green-ink); }
+.wi-bar { display: inline-block; width: 46px; height: 6px; margin-right: 8px; vertical-align: middle; border-radius: 999px; background: rgba(13, 42, 30, .07); overflow: hidden; }
+.wi-bar i { display: block; height: 100%; border-radius: inherit; background: var(--faint); transform-origin: left; animation: grow .7s var(--ease) both; }
+.wi-bar.up i { background: linear-gradient(90deg, #F59E0B, #C8432A); }
+.wi-bar.down i { background: linear-gradient(90deg, #34D399, #0F766E); }
+.wi-more { margin-top: 10px; }
+.wi-note { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.wi-note .ic { width: 15px; height: 15px; margin-top: 2px; flex: none; color: var(--brand); }
+
 /* copilot */
 .copilot { position: sticky; top: 96px; display: flex; flex-direction: column; max-height: calc(100vh - 112px); overflow: hidden; }
 .copilot-head { display: flex; gap: 12px; align-items: center; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); }
@@ -174,6 +206,7 @@
   .chat-log { max-height: 420px; }
 }
 @media (max-width: 860px) {
+  .wi-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sv-hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "kpis" "actions"; padding: 22px 20px 18px; }
 }
 @media (max-width: 640px) {
