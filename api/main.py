@@ -20,7 +20,7 @@ def create_app() -> FastAPI:
     """Build the app. CORS stays closed unless CORS_ORIGINS is set."""
     app = FastAPI(title="FeedForward", version="0.1.0", description="Predict. Prevent. Provide.")
     if cors_origins():
-        app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["GET", "POST"], allow_headers=["*"])
+        app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["GET", "POST", "DELETE"], allow_headers=["*"])
     for module in (health, forecast, whatif, review, catalogue, copilot, admin, calendar):
         app.include_router(module.router, prefix="/api")
 

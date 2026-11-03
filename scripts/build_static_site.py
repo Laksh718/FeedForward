@@ -8,6 +8,7 @@ mode (app/js/static-api.js reads the snapshot instead of calling /api).
 Run from the project root, after the pipeline has produced artifacts/ (see the README):
     python scripts/build_static_site.py              # writes site/
     python scripts/build_static_site.py --out DIR
+    python scripts/build_static_site.py --api-url ""   # snapshot only, no deployed server behind the page
 
 What the snapshot holds:
 - health, and for every date the calendar covers: the plan (main dishes and all dishes) and the menu of each slot
@@ -53,6 +54,9 @@ WINDOW_DAYS = 7                                               # what if and copi
 ATTENDANCE_STEPS = [p for p in range(-30, 31, 5) if p != 0]   # the what if slider in app/js/whatif.js
 SPECIAL_DAYS = ("special_day", "exam_week", "festival")
 STATIC_MARKER = '<meta name="feedforward-mode" content="static">'
+# The deployed server (Render) that answers what the snapshot cannot: combined what ifs, other dates, free copilot
+# questions, approvals and the Daily log. Its CORS_ORIGINS must include the site's address (https://laksh718.github.io).
+DEFAULT_API_URL = os.getenv("FEEDFORWARD_API_URL", "https://feedforward-195t.onrender.com")
 
 client = TestClient(app)
 
@@ -124,8 +128,8 @@ def progress(label: str, done: int, total: int, started: float) -> None:
         print(f"\r  {label}: {done}/{total} ({time.time() - started:.0f}s)", end="\n" if done == total else "", flush=True)
 
 
-def write_page(out: Path) -> None:
-    """Fresh copy of app/ with the static marker; keeps out/data/ when it is there."""
+def write_page(out: Path, api_url: str = DEFAULT_API_URL) -> None:
+    """Fresh copy of app/ with the static marker (and the deployed server's address); keeps out/data/ when it is there."""
     data = out / "data"
     kept = Path(tempfile.mkdtemp(prefix="feedforward-data-")) / "data" if data.exists() else None
     if kept:
@@ -139,13 +143,14 @@ def write_page(out: Path) -> None:
     html = index.read_text(encoding="utf-8")
     if '<meta charset="utf-8">' not in html:
         raise SystemExit("app/index.html has no <meta charset=\"utf-8\"> to put the static marker after")
-    index.write_text(html.replace('<meta charset="utf-8">', f'<meta charset="utf-8">\n  {STATIC_MARKER}', 1), encoding="utf-8")
+    marker = STATIC_MARKER + (f'\n  <meta name="feedforward-api" content="{api_url.rstrip("/")}">' if api_url else "")
+    index.write_text(html.replace('<meta charset="utf-8">', f'<meta charset="utf-8">\n  {marker}', 1), encoding="utf-8")
     (out / ".nojekyll").write_text("", encoding="utf-8")   # serve the files as they are, no Jekyll step
 
 
-def refresh_page(out: Path) -> None:
+def refresh_page(out: Path, api_url: str = DEFAULT_API_URL) -> None:
     """Page only: new app/ files, same snapshot. Only valid while the Python code and artifacts/ are unchanged."""
-    write_page(out)
+    write_page(out, api_url)
     path = out / "data" / "health.json"
     health = json.loads(path.read_text(encoding="utf-8"))
     health["demo"]["source_commit"] = source_commit()
@@ -153,11 +158,11 @@ def refresh_page(out: Path) -> None:
     print(f"Refreshed the page files in {out}; kept the snapshot from {health['demo']['built_at']}.")
 
 
-def build(out: Path) -> None:
+def build(out: Path, api_url: str = DEFAULT_API_URL) -> None:
     started = time.time()
     if out.exists():
         shutil.rmtree(out)
-    write_page(out)
+    write_page(out, api_url)
 
     health = call("GET", "/health")
     first, last = Date.fromisoformat(C.HISTORY_START), Date.fromisoformat(C.FORECAST_LAST_DAY)
@@ -239,6 +244,8 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=ROOT / "site", help="output folder (default: site/)")
     parser.add_argument("--reuse-data", action="store_true",
                         help="only refresh the page files (app/ changed, the Python code and model did not); takes seconds")
+    parser.add_argument("--api-url", default=DEFAULT_API_URL,
+                        help=f"deployed FeedForward server the page may call (default {DEFAULT_API_URL}; empty for snapshot only)")
     args = parser.parse_args()
     out = args.out.resolve()
     # The output folder is deleted and rebuilt, so only ever replace an empty folder or an earlier build.
@@ -247,10 +254,10 @@ def main() -> None:
     if args.reuse_data:
         if not (out / "data" / "health.json").exists():
             raise SystemExit(f"--reuse-data needs an earlier build in {out}. Run once without it.")
-        return refresh_page(out)
+        return refresh_page(out, args.api_url)
     if not (C.MODELS_DIR / "final").exists():
         raise SystemExit("No trained model in artifacts/models/final. Run the pipeline first (see the README).")
-    build(out)
+    build(out, args.api_url)
 
 
 if __name__ == "__main__":
