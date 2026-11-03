@@ -15,7 +15,7 @@ import pandas as pd
 
 from feedforward import config as C
 from feedforward.copilot import llm
-from feedforward.copilot.context_builder import MESSAGES, build_context
+from feedforward.copilot.context_builder import MESSAGES, WIDE_RANGE_PCT, build_context
 from feedforward.copilot.nlu import Understanding, resolve_day, understand
 from feedforward.copilot.prompts import build_v2
 from feedforward.copilot.templates import template_answer
@@ -50,8 +50,9 @@ def _context_numbers(node) -> set[float]:
 
 
 def ungrounded_numbers(answer: str, context: dict) -> list[float]:
-    """Figures in the answer that are not in the context (numbers under 10 are ignored)."""
-    allowed = _context_numbers(context)
+    """Figures in the answer that are not in the context (numbers under 10 are ignored). The "wide range" threshold
+    from the prompt's own rules may be quoted too ("the range is over 30 percent of the most likely amount")."""
+    allowed = _context_numbers(context) | {float(WIDE_RANGE_PCT)}
     return sorted(x for x in _numbers(answer) if x >= SMALL and x not in allowed and round(x) not in allowed)
 
 
