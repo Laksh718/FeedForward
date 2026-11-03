@@ -225,3 +225,47 @@ def test_no_forbidden_words_anywhere_in_the_project():
     for name in ("README.md", "pyproject.toml", ".env.example"):
         bad += [f"{name}: {m.group(0)}" for m in forbidden.finditer(Path(root / name).read_text(encoding="utf-8"))]
     assert not bad, bad
+
+
+def test_gemini_slow_or_busy_model_hands_over_to_the_next(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setenv("GEMINI_MODEL", "first-model")
+    monkeypatch.setenv("GEMINI_FALLBACK_MODELS", "second-model, third-model")
+    assert llm.gemini_models() == ["first-model", "second-model", "third-model"]
+    tried = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        model = request.url.path.split("/")[-1].split(":")[0]
+        tried.append(model)
+        if model == "first-model":
+            return httpx.Response(503, json={"error": {"message": "high demand"}})
+        if model == "second-model":
+            raise httpx.ReadTimeout("slow")
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": "From the third."}]}}]})
+    assert llm.complete([{"role": "user", "content": "hi"}], httpx.MockTransport(handler)) == "From the third."
+    assert tried == ["first-model", "second-model", "third-model"]
+
+
+def test_gemini_refused_key_is_not_retried(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "bad")
+    monkeypatch.delenv("GEMINI_FALLBACK_MODELS", raising=False)
+    tried = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        tried.append(request.url.path)
+        return httpx.Response(403, json={"error": {"message": "API key not valid"}})
+    with pytest.raises(llm.LLMUnavailable):
+        llm.complete([{"role": "user", "content": "hi"}], httpx.MockTransport(handler))
+    assert len(tried) == 1
+
+
+def test_gemini_fallbacks_can_be_switched_off(monkeypatch):
+    monkeypatch.setenv("GEMINI_MODEL", "")
+    monkeypatch.setenv("GEMINI_FALLBACK_MODELS", "")
+    assert llm.gemini_models() == [llm.GEMINI_DEFAULT_MODEL]
+
+
+def test_quoting_the_wide_range_rule_is_not_an_invented_figure():
+    ctx = {"totals": {"most_likely": 12469, "range_width_pct_of_most_likely": 41}}
+    assert ungrounded_numbers("The range is over 30 percent of the most likely 12,469, so it is uncertain.", ctx) == []
+    assert ungrounded_numbers("Cook 7,777 because the range is over 30 percent.", ctx) == [7777.0]

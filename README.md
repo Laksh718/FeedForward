@@ -79,7 +79,8 @@ cp .env.example .env               # then edit .env: GEMINI_API_KEY, ADMIN_PIN
 Then run the pipeline steps below once (they build `artifacts/`) and start the server with `uvicorn api.main:app --reload`.
 
 `.env` keys: `GEMINI_API_KEY` (optional, from [Google AI Studio](https://aistudio.google.com/apikey): without it the copilot uses standard
-wording), `GEMINI_MODEL` (default `gemini-3.5-flash-lite`, which answers in a few seconds; any model your key lists works), `ADMIN_PIN` (needed for the Daily log).
+wording), `GEMINI_MODEL` (default `gemini-3.1-flash-lite`) and `GEMINI_FALLBACK_MODELS` (tried in turn when that model is slow, busy or
+unavailable, because Gemini's speed swings with demand), `ADMIN_PIN` (needed for the Daily log).
 `GROQ_API_KEY` and `GROQ_MODEL` still work as an alternative and are used only when there is no Gemini key. Secrets stay in `.env`; it is never committed.
 
 ## How to run each part (from the project folder, venv active)
