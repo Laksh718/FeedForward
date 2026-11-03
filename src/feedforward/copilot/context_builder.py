@@ -32,6 +32,8 @@ MESSAGES = {
                        "or an exam week, festival or holiday. Ask in one of those ways, or use the what if controls."),
     "off_topic": ("I can explain this forecast: a dish against the usual plan, the likely range, a what if, the week, "
                   "or surplus risk."),
+    "greeting": ("Hello! I explain the forecast on this page. Try: \"What should we cook for lunch?\", \"How much rice should "
+                 "we make?\", \"Explain the range\", \"What if it rains?\" or \"Summarise the week\"."),
 }
 
 

@@ -33,6 +33,15 @@ RISK_WORDS = re.compile(r"\b(surplus|waste|wastage|leftover|leftovers|overproduc
 WEEK_WORDS = re.compile(r"\b(week|trend|peak|summar\w+|rise|rises|highest|lowest|busiest|quietest|next days|coming days)\b")
 WHY_WORDS = re.compile(r"\b(why|explain|usual plan|above|below|higher|lower|more than|less than|compare)\b")
 PERCENT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(?:%|percent|per cent)")
+# A message that is only a greeting or a thank you gets a short hello with example questions.
+GREETING = re.compile(r"^\s*(hi+|hello|hey+|hiya|namaste|good (morning|afternoon|evening)|thanks|thank you|thx|ok|okay)"
+                      r"(\s+(there|copilot|team|all))?\s*[!.?]*\s*$")
+# Planning questions: what to cook, how much to make. They are answered with the slot's plan against the usual plan.
+PLAN_WORDS = re.compile(r"\b(what (should|shall|do|can|would) (i|we) (cook|make|prepare|plan|serve)|what to (cook|make|prepare|plan|serve)"
+                        r"|how (much|many)|(the|today'?s|tomorrow'?s|this|our|my) plan|plan for|quantit(y|ies)|portions)\b")
+# Words that never name a dish on their own, so they are skipped when looking for part of a dish name.
+NOT_DISH_WORDS = {"much", "many", "make", "cook", "plan", "lunch", "dinner", "snacks", "breakfast", "should", "today",
+                  "tomorrow", "week", "what", "with", "need", "portions", "quantity", "would", "could", "there", "about"}
 
 
 @dataclass
@@ -106,6 +115,19 @@ def _flags_from_text(tokens: list[str], ents) -> dict:
     return flags
 
 
+def _partial_dishes(tokens: list[str], dish_keys: dict[str, str]) -> list[str]:
+    """Dishes whose name contains a word of the question ("rice" -> steamed rice, jeera rice, ...), at most eight.
+    Used only for planning and "why" questions; the context then explains the first of them on that day's menu."""
+    found: list[str] = []
+    for t in tokens:
+        if len(t) < 4 or t in NOT_DISH_WORDS:
+            continue
+        ids = {dish for key, dish in dish_keys.items() if t in key.split()}
+        if 0 < len(ids) <= 8:
+            found += sorted(i for i in ids if i not in found)
+    return found
+
+
 def understand(question: str, dish_keys: dict[str, str]) -> Understanding:
     """Intent and entities for one typed question. dish_keys maps match keys to dish ids (the gazetteer)."""
     text = T.clean_text(question)
@@ -126,6 +148,9 @@ def understand(question: str, dish_keys: dict[str, str]) -> Understanding:
     u.weather_type, u.temp_max_c = _weather_from_text(toks, ents)
     u.flags = _flags_from_text(toks, ents)
 
+    if GREETING.search(low):
+        u.reason = "greeting"
+        return u
     if ACTION.search(low):
         u.reason = "action"                     # the copilot explains; it never changes or approves anything
         return u
@@ -139,6 +164,9 @@ def understand(question: str, dish_keys: dict[str, str]) -> Understanding:
         else:
             u.reason = "unclear_change"   # a what if, but not one of the changes the dashboard can try
         return u
+    planning = bool(PLAN_WORDS.search(low))
+    if (planning or WHY_WORDS.search(low)) and not u.dish_ids:   # "how much rice", "why is paneer high"
+        u.dish_ids = _partial_dishes(toks, dish_keys)
     if RANGE_WORDS.search(low) and not u.dish_ids:
         u.intent = "explain_range"
     elif RISK_WORDS.search(low):
@@ -151,6 +179,8 @@ def understand(question: str, dish_keys: dict[str, str]) -> Understanding:
         u.intent = "explain_range"
     elif WHY_WORDS.search(low) and ({"plan", "forecast", "demand", "portions", "cook", "cooking", "high", "low", "higher", "lower"} & set(toks)):
         u.intent = "explain_dish"               # about the whole slot against the usual plan
+    elif planning:
+        u.intent = "explain_dish"               # "what should we cook": the slot's plan against the usual plan
     else:
         u.reason = "off_topic"
     return u
