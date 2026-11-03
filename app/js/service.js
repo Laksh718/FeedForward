@@ -25,6 +25,13 @@ const SKELETON = `
   <div class="sv-grid">
     <div>
       <div class="sv-section-head"><h2>Dish by dish</h2><p class="sv-legend-text">Green bar is the likely range. Tick is the most likely amount. Red line is the usual plan.</p></div>
+      <div class="sv-filters" id="sv-filters">
+        <label class="sr-only" for="sv-search">Find a dish</label>
+        <input id="sv-search" class="sv-search" type="search" autocomplete="off" placeholder="Find a dish&hellip;">
+        <select id="sv-cat" class="sv-select" aria-label="Filter by category"><option value="all">All categories</option></select>
+        <div class="sv-pills sv-diet" id="sv-diet" role="group" aria-label="Filter by diet"></div>
+      </div>
+      <p class="sv-filter-count" id="sv-filter-count" aria-live="polite"></p>
       <div id="sv-tickets" class="tickets"></div>
       <button class="btn show-all" id="sv-showall" type="button" hidden></button>
       <section class="card weekcard" aria-labelledby="sv-week-title">
@@ -50,15 +57,31 @@ function rangeBar(d, rec) {
     `<div class="tick" style="left:${pos(d.p50)}"></div>${d.usual_plan ? `<div class="usual" style="left:${pos(d.usual_plan)}"></div>` : ""}</div>`;
 }
 
-function ticket(d, s) {
+const DIET_LABEL = { veg: "Veg", nonveg: "Non-veg", egg: "Egg" };
+const CATEGORY_LABEL = (c) => c.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+
+function ticket(d, s, meta) {
   const qty = s.adjusted[d.dish_id] ?? d.recommended;
   const big = s.editing
     ? `<input type="number" min="0" step="5" value="${qty}" data-dish="${d.dish_id}" aria-label="Portions to cook for ${esc(d.dish_name)}">`
     : `<span class="big num">${fmt(qty)}</span>`;
   const usual = d.usual_plan ? `Usual plan is ${fmt(d.usual_plan)}.` : "No usual plan yet for this dish.";
-  return `<article class="ticket"><div class="ticket-head"><h3 class="ticket-name">${esc(d.dish_name)}</h3><span class="pill ${d.surplus_risk}">${riskLabel(d.surplus_risk, true)}</span></div>
+  const m = meta[d.dish_id];
+  const tags = m ? `<p class="ticket-tags">${m.category ? `<span class="tag">${esc(CATEGORY_LABEL(m.category))}</span>` : ""}${m.diet ? `<span class="tag diet-${esc(m.diet)}">${esc(DIET_LABEL[m.diet] ?? m.diet)}</span>` : ""}</p>` : "";
+  return `<article class="ticket" data-dish-id="${d.dish_id}"><div class="ticket-head"><h3 class="ticket-name">${esc(d.dish_name)}</h3><span class="pill ${d.surplus_risk}">${riskLabel(d.surplus_risk, true)}</span></div>
+    ${tags}
     <div class="ticket-qty">${big}<span class="unit">portions to cook</span></div>${rangeBar(d, qty)}
     <p class="ticket-cap num">Likely ${fmt(d.p10)} to ${fmt(d.p90)}. ${usual}</p></article>`;
+}
+
+// Food item filter: search text, one category, one diet. Local to this view; recomputed from the day's menu.
+const foodFilter = { q: "", category: "all", diet: "all" };
+function matchesFilter(d, meta) {
+  const m = meta[d.dish_id];
+  if (foodFilter.diet !== "all" && m?.diet !== foodFilter.diet) return false;
+  if (foodFilter.category !== "all" && m?.category !== foodFilter.category) return false;
+  if (foodFilter.q && !d.dish_name.toLowerCase().includes(foodFilter.q)) return false;
+  return true;
 }
 
 export function mountService(root) {
@@ -73,11 +96,40 @@ export function mountService(root) {
   q("#sv-tickets").addEventListener("input", (e) => {
     if (e.target.dataset.dish) setAdjusted(e.target.dataset.dish, Math.max(0, Math.round(Number(e.target.value) || 0)));
   });
+  let lastState = null;
+  const rerender = () => { if (lastState) render(lastState); };
+  q("#sv-search").addEventListener("input", (e) => { foodFilter.q = e.target.value.trim().toLowerCase(); rerender(); });
+  q("#sv-cat").addEventListener("change", (e) => { foodFilter.category = e.target.value; rerender(); });
+  q("#sv-diet").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-diet]");
+    if (!b) return;
+    foodFilter.diet = b.dataset.diet;
+    rerender();
+  });
   const send = (text) => { ask(text); q("#sv-q").value = ""; };
   q("#sv-form").addEventListener("submit", (e) => { e.preventDefault(); send(q("#sv-q").value); });
   root.querySelectorAll(".chip-btn").forEach((b) => b.addEventListener("click", () => send(b.textContent)));
 
-  subscribe((s) => {
+  function renderFilterBar(s) {
+    const meta = Object.fromEntries(s.menu.map((m) => [m.dish_id, m]));
+    const cats = [...new Set(s.menu.map((m) => m.category).filter(Boolean))].sort();
+    if (!foodFilter.category || (foodFilter.category !== "all" && !cats.includes(foodFilter.category))) foodFilter.category = "all";
+    const catSel = q("#sv-cat");
+    if (catSel.dataset.built !== cats.join(",")) {
+      catSel.innerHTML = `<option value="all">All categories</option>` + cats.map((c) => `<option value="${esc(c)}">${esc(CATEGORY_LABEL(c))}</option>`).join("");
+      catSel.dataset.built = cats.join(",");
+    }
+    catSel.value = foodFilter.category;
+    const diets = [...new Set(s.menu.map((m) => m.diet).filter(Boolean))];
+    if (foodFilter.diet !== "all" && !diets.includes(foodFilter.diet)) foodFilter.diet = "all";
+    q("#sv-diet").innerHTML = diets.length < 2 ? "" : [["all", "All"], ...diets.map((d) => [d, DIET_LABEL[d] ?? d])]
+      .map(([v, label]) => `<button type="button" data-diet="${v}" aria-pressed="${String(v === foodFilter.diet)}">${label}</button>`).join("");
+    return meta;
+  }
+
+  function render(s) {
+    lastState = s;
+    const meta = renderFilterBar(s);
     const p = s.plan;
     root.querySelectorAll("[data-slot]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.slot === s.slot)));
     q("#sv-chip").textContent = s.health?.data_source_short ?? "";
@@ -102,7 +154,13 @@ export function mountService(root) {
         ? `With your changes the total is ${fmt(total)} portions, ${fmt(Math.abs(total - p.totals.recommended))} ${total > p.totals.recommended ? "more" : "fewer"} than recommended.`
         : p.supporting;
       const typing = s.editing && document.activeElement?.tagName === "INPUT" && tickets.contains(document.activeElement);
-      if (!typing) tickets.innerHTML = p.dishes.map((d) => ticket(d, s)).join(""); // keep focus while the person types
+      const shown = p.dishes.filter((d) => matchesFilter(d, meta));
+      const filterActive = foodFilter.q || foodFilter.category !== "all" || foodFilter.diet !== "all";
+      q("#sv-filter-count").textContent = filterActive ? `Showing ${shown.length} of ${p.dishes.length} dishes.` : "";
+      if (!typing) {
+        tickets.innerHTML = shown.length ? shown.map((d) => ticket(d, s, meta)).join("")
+          : `<div class="card empty" style="grid-column:1/-1"><strong>No dish matches that search.</strong>Try a different word or clear the filters.</div>`;
+      }
     }
     const hasWhatIf = Object.keys(s.overrides).length > 0;
     q("#sv-note").innerHTML = hasWhatIf ? `<p class="sv-note">This is a what if, not the saved plan. Approving saves it with your changes listed.</p>` : "";
@@ -127,5 +185,7 @@ export function mountService(root) {
     log.innerHTML = s.chat.length ? s.chat.map((m) => `<div class="bubble ${m.role}">${esc(m.text)}${SOURCE_NOTE[m.source] ? `<span class="src">${SOURCE_NOTE[m.source]}</span>` : ""}</div>`).join("") + (s.chatBusy ? `<div class="bubble bot">Working on it</div>` : "")
       : `<div class="bubble bot">Ask why a dish is above or below the usual plan, or what a change would do. I only use the numbers on this page.</div>`;
     log.scrollTop = log.scrollHeight;
-  });
+  }
+
+  subscribe(render);
 }

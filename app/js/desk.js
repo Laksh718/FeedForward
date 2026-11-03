@@ -34,8 +34,8 @@ const SKELETON = `
     <section data-panel="forecast">
       <div class="dk-card"><div class="dishpick" id="dk-pick" role="group" aria-label="Choose a dish for the chart"></div>
         <div class="chart" id="dk-chart" style="margin-top:12px"></div>
-        <div class="legend"><span><i style="background:#5F6B88"></i>Eaten last week</span><span><i class="swatch" style="background:#BFD0F0"></i>Likely range</span>
-          <span><i style="background:#17233B"></i>Most likely</span><span><i style="background:#E5702A"></i>Recommended to cook</span></div></div>
+        <div class="legend"><span><i style="background:#7C9183"></i>Eaten last week</span><span><i class="swatch" style="background:#9CC4AE"></i>Likely range</span>
+          <span><i style="background:#15291F"></i>Most likely</span><span><i style="background:#C4452D"></i>Recommended to cook</span></div></div>
       <div class="dk-card"><h2 id="dk-table-title"></h2><div class="tablewrap" id="dk-table"></div><button class="link-btn" id="dk-showall" type="button" hidden></button></div>
     </section>
     <section data-panel="whatif" hidden><div class="dk-card"><h2>What if</h2>
@@ -65,7 +65,7 @@ function table(p, s) {
 
 function riskPanel(p) {
   const order = ["high", "medium", "low"];
-  return `<p class="dk-panel-note">Surplus risk compares the usual plan with the forecast range. This first version uses simple thresholds and will be replaced by the surplus detector.</p>` +
+  return `<p class="dk-panel-note">Surplus risk compares the usual plan and forecast range with ingredient expiry and stock cover, and takes the higher of the two.</p>` +
     order.map((lvl) => {
       const list = p.dishes.filter((d) => d.surplus_risk === lvl);
       return `<div class="riskgroup"><h3><span class="pill ${lvl}">${riskLabel(lvl)}</span>${list.length} dish${list.length === 1 ? "" : "es"}</h3>` +

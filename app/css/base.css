@@ -2,8 +2,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #15291F; background: #EEF1EC; }
-body[data-view="desk"] { background: #F4F6FB; }
-body[data-view="admin"] { background: #EEF1EC; }
+body[data-view="landing"] { background: #0F1A14; }
 h1, h2, h3, p { margin: 0; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -16,7 +15,6 @@ button { cursor: pointer; }
 /* view switch bar */
 .viewbar { display: flex; align-items: center; gap: 12px; padding: 6px 16px; background: #0F1A14; color: #DCE5DF;
   font: 500 13px/1 "Instrument Sans", system-ui, sans-serif; }
-body[data-view="desk"] .viewbar { background: #0E1730; }
 .viewbar-tabs { display: flex; gap: 4px; }
 .viewbar-tabs button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 8px; background: transparent; color: #DCE5DF; }
 .viewbar-tabs { flex-wrap: wrap; }

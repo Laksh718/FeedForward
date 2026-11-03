@@ -29,6 +29,18 @@
 .sv-section-head h2 { font-size: 24px; font-weight: 500; }
 .sv-legend-text { font-size: 14px; color: var(--muted); }
 
+.sv-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+.sv-search { min-height: 44px; padding: 0 14px; border: 1px solid #B9C5BB; border-radius: 999px; background: #fff; min-width: 180px; flex: 1 1 180px; }
+.sv-select { min-height: 44px; padding: 0 12px; border: 1px solid #B9C5BB; border-radius: 8px; background: #fff; }
+.sv-diet:empty { display: none; }
+.sv-diet button { font-size: 14px; }
+.sv-filter-count { font-size: 13px; color: var(--muted); margin: -2px 0 10px; }
+.ticket-tags { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; background: #EDF0EC; color: var(--muted); }
+.tag.diet-nonveg { background: #F7DAD3; color: #8A2A18; }
+.tag.diet-egg { background: #F6E7BF; color: #6B4A00; }
+.tag.diet-veg { background: #DCEBE1; color: #2D5A42; }
+
 .tickets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .ticket { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
 .ticket-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
