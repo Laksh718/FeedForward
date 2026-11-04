@@ -85,6 +85,7 @@ class ForecastService:
         self.menu = pd.read_parquet(C.PROCESSED_DIR / "weekly_menu.parquet")
         self.inventory_features = pd.read_parquet(C.TIMESERIES_DIR / "inventory_features.parquet").set_index(
             ["date", "dish_id"])
+        self.inventory_last_day = self.inventory_features.index.get_level_values("date").max()
         self.detector = detector or InventoryAwareSurplusDetector()
         self.recommend_quantile = recommend_quantile
 
@@ -132,6 +133,7 @@ class ForecastService:
         total = {k: int(sum(d[k] for d in rows)) for k in ("p10", "p50", "p90", "recommended", "usual_plan")}
         att = int(round(feats["expected_attendance"].iloc[0]))
         return {"date": str(day.date()), "meal_slot": slot, "expected_attendance": att,
+                "inventory_risk_available": bool(day <= self.inventory_last_day),  # False: risk uses demand only
                 "dishes": rows, "day_facts": self._day_facts(day, feats), "totals": total, "totals_note": TOTALS_NOTE,
                 "overrides_applied": ov.applied(), "notes": self._notes(day, rows)}
 
@@ -173,6 +175,7 @@ class ForecastService:
 
     def _empty(self, day, slot, ov) -> dict:
         """Response for a slot with no dishes on that day."""
-        return {"date": str(day.date()), "meal_slot": slot, "expected_attendance": 0, "dishes": [], "day_facts": {},
+        return {"date": str(day.date()), "meal_slot": slot, "expected_attendance": 0, "inventory_risk_available": False,
+                "dishes": [], "day_facts": {},
                 "totals": dict.fromkeys(("p10", "p50", "p90", "recommended", "usual_plan"), 0), "totals_note": "",
                 "overrides_applied": ov.applied(), "notes": ["No dishes are on the menu for this slot and day."]}

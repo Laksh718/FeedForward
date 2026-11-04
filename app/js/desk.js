@@ -63,6 +63,7 @@ function table(p, s) {
 function riskPanel(p) {
   const order = ["high", "medium", "low"];
   return `<p class="dk-panel-note">Surplus risk compares the usual plan and forecast range with ingredient expiry and stock cover, and takes the higher of the two.</p>` +
+    (p.inventory_risk_available === false ? `<p class="dk-panel-note">Stock data not available for this date, risk is based on demand only.</p>` : "") +
     order.map((lvl) => {
       const list = p.dishes.filter((d) => d.surplus_risk === lvl);
       return `<div class="riskgroup"><h3><span class="pill ${lvl}">${riskLabel(lvl)}</span>${list.length} dish${list.length === 1 ? "" : "es"}</h3>` +
