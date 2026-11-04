@@ -3,7 +3,7 @@
 python -m feedforward.models.train                  development run: train on train, early stop on validation
 python -m feedforward.models.train --final          retrain on train + validation with the chosen epochs
 python -m feedforward.models.train --encoder gru    optional GRU experiment (compare with the default MLP)
-python -m feedforward.models.train --extra-data F   add synthetic rare event rows from the GAN (teammate)
+python -m feedforward.models.train --extra-data F   add synthetic rare event rows from the GAN (see README, GAN section)
 """
 
 import argparse
@@ -150,6 +150,7 @@ def main() -> None:
     ap.add_argument("--final", action="store_true", help="retrain on train + validation (needs a dev run first)")
     ap.add_argument("--include-test", action="store_true", help="with --final, also train on the test period")
     ap.add_argument("--extra-data", default=None, help="synthetic rows from the GAN (parquet or csv)")
+    ap.add_argument("--extra-weight", type=float, default=C.EXTRA_DATA_WEIGHT, help="weight of synthetic rows (real rows weigh 1)")
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--include-admin", action="store_true", help="also learn from the real entries of the admin daily log")
     ap.add_argument("--real-weight", type=float, default=C.REAL_ROW_WEIGHT, help="weight of real rows (simulated rows weigh 1)")
@@ -165,7 +166,8 @@ def main() -> None:
     extra = None
     if args.extra_data:
         from feedforward.plugins.gan_extra_data import load_extra_rows
-        extra = load_extra_rows(args.extra_data)
+        extra = load_extra_rows(args.extra_data, args.extra_weight)
+        print(f"Using {len(extra)} synthetic rows (weight {args.extra_weight}). They are never used for validation or testing.")
     tag = "" if args.encoder == "mlp" else "_gru"
     if args.final:
         dev = ModelBundle.load(DEV_DIR)
