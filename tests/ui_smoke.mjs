@@ -141,12 +141,29 @@ await ev("location.hash = 'desk'");
 const small = await ev("[...document.querySelectorAll('#view-desk button, #view-desk select, #view-desk input:not([type=range])')].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 43.5).map((e) => (e.id || e.textContent.slice(0, 14)) + ':' + Math.round(e.getBoundingClientRect().height)).join(' | ')");
 check("B every visible control is at least 44px tall", small === "", small);
 
+// ---- Home and Calendar
+await ev("location.hash = 'landing'");
+await waitFor("document.querySelector('#ld-preview') && document.querySelector('#ld-preview').textContent.trim().length > 20", "home preview");
+check("H home shows the live preview", /\d/.test(await ev("document.querySelector('#ld-preview').textContent")), await ev("document.querySelector('#ld-preview').textContent.trim().slice(0, 60)"));
+check("H home has its sections and a selected Home tab", await ev("document.querySelectorAll('#view-landing .ld-section').length >= 3 && document.querySelector('#tab-landing').getAttribute('aria-selected') === 'true'"));
+await ev("location.hash = 'calendar'");
+await waitFor("document.querySelectorAll('#cal-grid [data-date]').length >= 28", "calendar grid");
+const month = await ev("document.querySelector('#cal-month-label').textContent");
+check("K calendar shows a month grid and its label", month.length > 3, `${month}, ${await ev("document.querySelectorAll('#cal-grid [data-date]').length")} days`);
+await ev("document.querySelector('#cal-next').click()");
+await waitFor(`document.querySelector('#cal-month-label').textContent !== ${JSON.stringify(month)}`, "next month");
+check("K calendar next month changes the label", true, await ev("document.querySelector('#cal-month-label').textContent"));
+await ev("document.querySelector('#cal-today').click()");
+await waitFor(`document.querySelector('#cal-month-label').textContent === ${JSON.stringify(month)}`, "back to today");
+check("K calendar Jump to today returns", true);
+check("K calendar has the Coming up list", await ev("!!document.querySelector('#cal-upcoming-list') && !!document.querySelector('#cal-live')"));
+
 // mobile: false keeps the viewport at 390 px, so content that is too wide shows up as overflow
 await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 900, deviceScaleFactor: 1, mobile: false });
-for (const view of ["service", "desk", "admin"]) {
+for (const view of ["landing", "service", "desk", "calendar", "admin"]) {
   await ev(`location.hash = '${view}'`);
   await sleep(700);
-  const wide = await ev("[...document.querySelectorAll('#view-" + view + " *')].filter((e) => e.offsetParent && e.getBoundingClientRect().right > 391 && !e.closest('.tablewrap, .ad-tablewrap, svg')).slice(0, 6).map((e) => (e.id || e.className.baseVal || e.className || e.tagName) + ':' + Math.round(e.getBoundingClientRect().right)).join(' | ')");
+  const wide = await ev("[...document.querySelectorAll('#view-" + view + " *')].filter((e) => e.offsetParent && e.getBoundingClientRect().right > 391 && !e.closest('.tablewrap, .ad-tablewrap, svg, .ld-mq-track, .ld-final-orb')).slice(0, 6).map((e) => (e.id || e.className.baseVal || e.className || e.tagName) + ':' + Math.round(e.getBoundingClientRect().right)).join(' | ')");
   check(`phone width: nothing wider than the screen (${view})`, wide === "" && await ev("document.documentElement.scrollWidth <= 391"), wide);
 }
 console.log(results.join("\n"));
