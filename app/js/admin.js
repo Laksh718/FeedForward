@@ -2,6 +2,7 @@
 import { REMOTE, STATIC, api, auth } from "./api.js";
 import { liquid } from "./fx.js";
 import { icon } from "./icons.js";
+import { refresh, state } from "./state.js";
 import { SLOTS, WEATHER_TYPES, cap, esc, fmt } from "./util.js";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -109,7 +110,7 @@ export function mountAdmin(root) {
     try {
       const r = await api.post("/admin/login", {});
       try { sessionStorage.setItem("ffpin", pin); } catch { /* private window: stay unlocked for this page only */ }
-      S.today = r.today;
+      S.today = state.health?.today ?? r.today;   // the shared store already holds /health
       $("#ad-gate").hidden = true;
       $("#ad-app").hidden = false;
       const [ing, cat] = await Promise.all([api.get("/ingredients"), api.get("/dishes")]);
@@ -257,6 +258,7 @@ export function mountAdmin(root) {
     try {
       const r = await api.post("/admin/day", payload());
       const c = r.saved;
+      refresh();   // the other views use the new day at once
       if (mine !== msgTurn) { refreshSide(); return; }
       $("#ad-msg").innerHTML = `<div class="ad-msg ok" role="status"><strong>Saved ${esc($("#ad-date").value)}.</strong> ${c.day_context} day context, ${c.attendance} attendance, ${c.kitchen_log} dish rows and ${c.ingredient_usage} ingredient rows. Forecasts now use this day.</div>${warnHtml(r.warnings)}`;
       refreshSide();
@@ -303,7 +305,7 @@ export function mountAdmin(root) {
       const errs = r.row_errors.length ? `<div class="ad-msg ${r.dates_saved ? "warn" : "bad"}"><strong>${r.row_errors.length} row(s) could not be used</strong>
         ${list(r.row_errors.map((e) => (e.row ? `Row ${e.row}: ${e.message}` : e.message)))}</div>` : "";
       msg.innerHTML = `<div class="ad-msg ${r.dates_saved ? "ok" : "warn"}"><strong>${r.message}</strong>${r.dates.length ? ` Dates: ${r.dates.join(", ")}.` : ""}</div>${errs}${warnHtml(r.warnings)}`;
-      if (r.dates_saved) { refreshSide(); if (r.dates.includes($("#ad-date").value)) loadDay($("#ad-date").value); }
+      if (r.dates_saved) { refresh(); refreshSide(); if (r.dates.includes($("#ad-date").value)) loadDay($("#ad-date").value); }
     } catch (e) { msg.innerHTML = `<div class="ad-msg bad">${errText(e)}</div>`; }
   });
 
@@ -344,6 +346,7 @@ export function mountAdmin(root) {
     if (t.dataset.del && confirm(`Delete everything saved for ${t.dataset.del}? The rows stay in the file marked as deleted, and forecasts ignore them.`)) {
       for (const table of TABLES) await api.del("/admin/entry", { table, date: t.dataset.del });
       showMsg(`Deleted the entries of ${esc(t.dataset.del)}.`, "ok");
+      refresh();
       if ($("#ad-date").value === t.dataset.del) await loadDay(t.dataset.del);
       refreshSide();
     }
