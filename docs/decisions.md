@@ -48,7 +48,7 @@
 | 44 | Saving a date replaces that date's section: rows no longer in the form are marked deleted, nothing is erased | "Saving again updates it" without leaving stale rows. The file keeps everything for audit |
 | 45 | Dish rows without an attendance number for their slot are saved but skipped for learning, with a warning | Demand per attendee needs the attendance |
 | 46 | Sanity warnings compare each value with the forecast range stretched three times on both sides (and fixed bands for attendance, prepared quantity and ingredients) | Catches extra digits without a second network; the same "unusual against expected" idea as autoencoder anomaly detection |
-| 47 | `--include-admin` gives real rows weight 3 and warns below 28 real days; admin dates fall in the training split | A few real days still count without drowning the simulated year |
+| 47 | `--include-admin` gives real rows weight 3 and refuses to train below 28 real days unless `--force` is given; admin dates fall in the training split | A few real days still count without drowning the simulated year |
 | 48 | The admin PIN lives in `.env` and travels in an `X-Admin-Pin` header; the placeholder `change-me` is refused | Simple as the brief asks, and it cannot be left at a known default by accident |
 | 49 | `FEEDFORWARD_ADMIN_LOG_DIR` redirects the logs (used by tests) | Tests never touch real entries |
 | 50 | Future dates accept only weather and special day information | Attendance and dishes cannot be known before the day |

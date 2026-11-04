@@ -188,3 +188,13 @@ def test_retraining_hook_uses_real_rows_and_warns(isolated, capsys):
     real = panel[panel["data_source"] == "admin_real"]
     assert len(real) == 2 and set(real["sample_weight"]) == {3.0} and set(panel.loc[panel["data_source"] != "admin_real", "sample_weight"]) == {1.0}
     assert "only 1 real days" in capsys.readouterr().out
+
+
+def test_include_admin_refuses_with_fewer_than_28_real_days(isolated, monkeypatch):
+    import sys
+
+    from feedforward.models import train as T
+    monkeypatch.setattr(sys, "argv", ["train", "--include-admin"])
+    with pytest.raises(SystemExit) as stop:
+        T.main()
+    assert "Only 0 real days" in str(stop.value) and "--force" in str(stop.value) and "Nothing was trained" in str(stop.value)

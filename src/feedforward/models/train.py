@@ -3,6 +3,7 @@
 python -m feedforward.models.train                  development run: train on train, early stop on validation
 python -m feedforward.models.train --final          retrain on train + validation with the chosen epochs
 python -m feedforward.models.train --encoder gru    optional GRU experiment (compare with the default MLP)
+python -m feedforward.models.train --include-admin  learn from the Daily log (needs 28 real days, or add --force)
 python -m feedforward.models.train --extra-data F   add synthetic rare event rows from the GAN (see README, GAN section)
 """
 
@@ -154,11 +155,18 @@ def main() -> None:
     ap.add_argument("--extra-weight", type=float, default=C.EXTRA_DATA_WEIGHT, help="weight of synthetic rows (real rows weigh 1)")
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--include-admin", action="store_true", help="also learn from the real entries of the admin daily log")
+    ap.add_argument("--force", action="store_true", help=f"with --include-admin, train even with fewer than {C.MIN_REAL_DAYS} real days")
     ap.add_argument("--real-weight", type=float, default=C.REAL_ROW_WEIGHT, help="weight of real rows (simulated rows weigh 1)")
     args = ap.parse_args()
 
     if args.include_admin and args.encoder == "gru":
         ap.error("--include-admin works with the default MLP encoder only")
+    if args.include_admin:
+        from feedforward.admin.history import real_day_count
+        days = real_day_count()
+        if days < C.MIN_REAL_DAYS and not args.force:
+            raise SystemExit(f"Only {days} real days are logged; at least {C.MIN_REAL_DAYS} are needed before real data should "
+                             "change the model. Nothing was trained. Log more days, or add --force to train anyway.")
     panel = load_panel_with_admin(args.real_weight) if args.include_admin else load_panel()
     cfg = CVAEConfig(encoder=args.encoder)
     if args.epochs:

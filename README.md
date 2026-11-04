@@ -97,7 +97,7 @@ fallback, used only when there is no Groq key. `ADMIN_PIN` is needed for the Dai
 | Evaluate | `python -m feedforward.models.evaluate` | `reports/metrics.json`, `metrics_summary.md`, PNG plots |
 | Train the deployed model | `python -m feedforward.models.train --final` | `artifacts/models/final` (train plus validation) |
 | Optional GRU experiment | `python -m feedforward.models.train --encoder gru` | `artifacts/models/dev_gru` |
-| Learn from real entries | `python -m feedforward.models.train --include-admin`, then `--final --include-admin` | uses the Daily log rows, warns below 28 real days |
+| Learn from real entries | `python -m feedforward.models.train --include-admin`, then `--final --include-admin` | uses the Daily log rows; refuses with fewer than 28 real days unless you add `--force` |
 | Prompt comparison (needs a key) | `python -m feedforward.copilot.compare_prompts` | `reports/prompt_comparison.md` |
 | Start the API and dashboard | `uvicorn api.main:app --reload` | http://127.0.0.1:8000/ (API docs at `/docs`) |
 | Tests | `pytest` | 157 tests (one NLP test needs NLTK WordNet data and fails without it) |
@@ -138,7 +138,7 @@ Click a day in a chart to see that day. "Main dishes" are the dishes the CVAE fo
 |---|---|
 | GET /api/health | status, project today, default plan date, data source chip |
 | GET /api/plan?date=&slot=&scope= | per dish range, recommended, usual plan, surplus risk, headline sentences |
-| GET /api/week?slot=&start=&dish_id= | 7 forecast days plus the 7 days before as actuals |
+| GET /api/week?slot=&start=&dish_id= | 7 forecast days plus the last 7 days with actuals before the start |
 | POST /api/whatif | plan with changes next to the unchanged plan |
 | POST /api/review, GET /api/review | Approve or Send back with a forecast snapshot; latest decision |
 | POST /api/chat | one explanation: answer, source (llm, template or rules), intent, figures used |
