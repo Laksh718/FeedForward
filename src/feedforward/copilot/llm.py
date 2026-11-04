@@ -1,17 +1,12 @@
-"""One call to a hosted language model over HTTP. It only turns figures into words.
+"""One request to a hosted language model over HTTP per answer. It only turns figures into words.
 
-Google Gemini is used when GEMINI_API_KEY is set; otherwise Groq when GROQ_API_KEY is set. Keys are read from .env
-(or the host's environment) and are never printed or logged. If there is no key, no internet or the service fails,
+Groq (openai/gpt-oss-20b) is used when GROQ_API_KEY is set; Gemini is the fallback when there is no Groq key
+(GEMINI_API_KEY). Keys are read from .env (or the host's environment) and are never printed or logged. Exactly one
+request is sent per answer: no retries and no second model. If there is no key, no internet or the service fails,
 LLMUnavailable is raised and the caller uses the template answer instead.
-
-Gemini's speed swings with demand (the same model can answer in 1 second and then take 20), so a Gemini call races a
-short chain of models: the first starts at once, the next one joins when the first has not answered after HEDGE_AFTER_S
-or as soon as it fails (busy, rate limited, unavailable), and the first good answer wins, all within TOTAL_BUDGET_S.
 """
 
 import os
-import time
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 import httpx
 from dotenv import load_dotenv
@@ -21,16 +16,12 @@ from feedforward import config as C
 load_dotenv(C.PROJECT_ROOT / ".env")
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 GEMINI_DEFAULT_MODEL = "gemini-3.1-flash-lite"   # change with GEMINI_MODEL
-GEMINI_DEFAULT_FALLBACKS = ("gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-flash-lite-latest")   # GEMINI_FALLBACK_MODELS
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_DEFAULT_MODEL = "openai/gpt-oss-20b"   # change with GROQ_MODEL; check the name in your Groq console
 TEMPERATURE = 0.2                           # low, so the same question gives nearly the same answer
 MAX_TOKENS = 500                            # answers are short by design
 GEMINI_THINKING_TOKENS = 2048               # newer Gemini models think first, and that counts against the output limit
-TIMEOUT_S = 20.0                            # one Groq call
-HEDGE_AFTER_S = 4.0                         # a Lite model usually answers in 1 to 3 s; after this the next model joins in
-TOTAL_BUDGET_S = 25.0                       # all Gemini attempts together, so the copilot never hangs
-RETRY_STATUS = {404, 408, 429, 500, 502, 503, 504}   # worth trying another model; 400, 401 and 403 are not
+TIMEOUT_S = 20.0                            # one request
 
 # Kept for callers and scripts that used the Groq only names.
 DEFAULT_MODEL = GROQ_DEFAULT_MODEL
@@ -45,29 +36,17 @@ def _key(name: str) -> str:
 
 
 def provider() -> str | None:
-    """Which service a call would use: "gemini", "groq" or None when no key is set."""
-    if _key("GEMINI_API_KEY"):
-        return "gemini"
+    """Which service a request would use: "groq", then "gemini", or None when no key is set."""
     if _key("GROQ_API_KEY"):
         return "groq"
+    if _key("GEMINI_API_KEY"):
+        return "gemini"
     return None
 
 
 def is_configured() -> bool:
     """True when a key is present (it may still fail at call time)."""
     return provider() is not None
-
-
-def gemini_models() -> list[str]:
-    """GEMINI_MODEL first, then the fallbacks (GEMINI_FALLBACK_MODELS, comma separated), without repeats."""
-    first = _key("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
-    raw = os.getenv("GEMINI_FALLBACK_MODELS")
-    rest = [m.strip() for m in raw.split(",")] if raw is not None else list(GEMINI_DEFAULT_FALLBACKS)
-    out = []
-    for m in [first, *rest]:
-        if m and m not in out:
-            out.append(m)
-    return out
 
 
 def _gemini_body(messages: list[dict], model: str) -> dict:
@@ -92,66 +71,20 @@ def _gemini_text(data: dict) -> str:
     return text
 
 
-class _TryNext(Exception):
-    """This model could not answer now (slow, busy, rate limited, unavailable or an empty reply); another may."""
-
-
-def _ask_gemini(client: httpx.Client, model: str, messages: list[dict], timeout: float) -> str:
-    try:
-        r = client.post(GEMINI_URL.format(model=model), json=_gemini_body(messages, model),
-                        headers={"x-goog-api-key": _key("GEMINI_API_KEY")}, timeout=timeout)
-    except httpx.TransportError as exc:
-        raise _TryNext(type(exc).__name__) from exc
-    if r.status_code in RETRY_STATUS:
-        raise _TryNext(f"HTTP {r.status_code}")
-    r.raise_for_status()                          # a refused key or a bad request will not improve with another model
-    try:
-        return _gemini_text(r.json())
-    except (KeyError, IndexError, TypeError, ValueError) as exc:
-        raise _TryNext("empty or blocked reply") from exc
-
-
 def _gemini(messages: list[dict], client: httpx.Client) -> str:
-    models, deadline = gemini_models(), time.monotonic() + TOTAL_BUDGET_S
-    pool = ThreadPoolExecutor(max_workers=len(models))
-    running: dict = {}
-    last = "no model tried"
-
-    def start_next() -> None:
-        model = models[len(running) + len(tried)]
-        running[pool.submit(_ask_gemini, client, model, messages, max(1.0, deadline - time.monotonic()))] = model
-
-    tried: list[str] = []
-    try:
-        start_next()
-        while running:
-            left = deadline - time.monotonic()
-            if left <= 0:
-                break
-            more = len(running) + len(tried) < len(models)
-            done, _ = wait(running, timeout=min(left, HEDGE_AFTER_S) if more else left, return_when=FIRST_COMPLETED)
-            if not done:                          # still waiting: let the next model race the slow one
-                if more:
-                    start_next()
-                continue
-            for future in done:
-                tried.append(running.pop(future))
-                try:
-                    return future.result()        # the first good answer wins
-                except _TryNext as exc:
-                    last = str(exc)
-            if len(running) + len(tried) < len(models):
-                start_next()                      # it failed outright: bring in the next model now
-    finally:
-        pool.shutdown(wait=False, cancel_futures=True)
-    raise LLMUnavailable(f"the language model could not be reached ({last if tried else 'ReadTimeout'})")
+    """The one Gemini request."""
+    model = _key("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
+    r = client.post(GEMINI_URL.format(model=model), json=_gemini_body(messages, model),
+                    headers={"x-goog-api-key": _key("GEMINI_API_KEY")})
+    r.raise_for_status()
+    return _gemini_text(r.json())
 
 
 def complete(messages: list[dict], transport: httpx.BaseTransport | None = None) -> str:
     """Send the messages and return the reply text. `transport` is for tests only."""
     which = provider()
     if which is None:
-        raise LLMUnavailable("neither GEMINI_API_KEY nor GROQ_API_KEY is set in .env")
+        raise LLMUnavailable("neither GROQ_API_KEY nor GEMINI_API_KEY is set in .env")
     try:
         with httpx.Client(timeout=TIMEOUT_S, transport=transport) as client:
             if which == "gemini":

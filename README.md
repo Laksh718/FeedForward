@@ -63,7 +63,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 pip install -e .
-Copy-Item .env.example .env        # then edit .env: GEMINI_API_KEY, ADMIN_PIN
+Copy-Item .env.example .env        # then edit .env: GROQ_API_KEY, ADMIN_PIN
 ```
 
 macOS or Linux:
@@ -73,15 +73,14 @@ python3 -m venv .venv_mac
 source .venv_mac/bin/activate
 pip install -r requirements.txt
 pip install -e .
-cp .env.example .env               # then edit .env: GEMINI_API_KEY, ADMIN_PIN
+cp .env.example .env               # then edit .env: GROQ_API_KEY, ADMIN_PIN
 ```
 
 Then run the pipeline steps below once (they build `artifacts/`) and start the server with `uvicorn api.main:app --reload`.
 
-`.env` keys: `GEMINI_API_KEY` (optional, from [Google AI Studio](https://aistudio.google.com/apikey): without it the copilot uses standard
-wording), `GEMINI_MODEL` (default `gemini-3.1-flash-lite`) and `GEMINI_FALLBACK_MODELS` (tried in turn when that model is slow, busy or
-unavailable, because Gemini's speed swings with demand), `ADMIN_PIN` (needed for the Daily log).
-`GROQ_API_KEY` and `GROQ_MODEL` still work as an alternative and are used only when there is no Gemini key. Secrets stay in `.env`; it is never committed.
+`.env` keys: `GROQ_API_KEY` and `GROQ_MODEL` (default `openai/gpt-oss-20b`; key from [Groq](https://console.groq.com)) for the copilot's
+language model, one request per answer. Without a key the copilot uses standard wording. `GEMINI_API_KEY` and `GEMINI_MODEL` are an optional
+fallback, used only when there is no Groq key. `ADMIN_PIN` is needed for the Daily log. Secrets stay in `.env`; it is never committed.
 
 ## How to run each part (from the project folder, venv active)
 
@@ -165,7 +164,7 @@ full feature set while the server is up, and falls back to the snapshot's behavi
 | Service board, Forecast desk | every date from 2025-10-06 to 2027-01-31, every slot, main dishes and all dishes, the week chart per dish | other weeks |
 | Calendar | every month, as cross-checked against the live holiday calendar when the snapshot was built | |
 | What if | one setting at a time for the 7 days from the project's tomorrow | combined settings, any date |
-| Copilot | if the server is down: the suggested questions for those 7 days, in the template wording | every question, answered by Gemini |
+| Copilot | if the server is down: the suggested questions for those 7 days, in the template wording | every question, answered by the language model |
 | Approve, Send back | if the server is down: saved in the visitor's own browser only | saved in the server's review log |
 | Daily log | off when there is no server | the full Daily log, behind the PIN |
 
@@ -200,7 +199,7 @@ the Daily log), deploy the repository as a container. The `Dockerfile` installs 
 3. Render reads `render.yaml` (a free Docker web service, health check on `/api/health`, redeploy on every push to `main`) and asks for:
    - `ADMIN_PIN`: a long random PIN, not 1234 (anyone with the link can reach the Daily log page). Until it is set, the Daily log is off.
    - `CORS_ORIGINS` is filled in from `render.yaml` (`https://laksh718.github.io`), so the GitHub Pages site can call the server.
-   - `GEMINI_API_KEY`: optional. Use a separate key for this deployment, because every visitor's copilot question uses it. Without a key
+   - `GROQ_API_KEY`: optional. Use a separate key for this deployment, because every visitor's copilot question uses it. Without a key
      the copilot answers in its template wording.
 4. Apply. The first build takes several minutes (torch); the app is then served at the `*.onrender.com` address Render shows.
 
