@@ -17,7 +17,7 @@ from feedforward import config as C
 from feedforward.models.attendance import add_expected_attendance
 from feedforward.models.baselines import GBMQuantile, SupportRule
 from feedforward.models.bundle import ModelBundle
-from feedforward.models.cvae import CVAE, CVAEConfig, train_cvae
+from feedforward.models.cvae import CVAE, CVAEConfig, set_seed, train_cvae
 from feedforward.models.prep import INPUT_COLUMNS, FeatureTransformer, noisy_weather_rows
 
 DEV_DIR, FINAL_DIR = C.MODELS_DIR / "dev", C.MODELS_DIR / "final"
@@ -82,7 +82,7 @@ def to_tensors(df: pd.DataFrame, tf: FeatureTransformer, y_mean: float, y_std: f
 
 def fit_bundle(panel: pd.DataFrame, fit_mask: pd.Series, val_mask: pd.Series | None, cfg: CVAEConfig,
                seq: np.ndarray | None = None, extra: pd.DataFrame | None = None, fixed_epochs: int | None = None,
-               spread_factor: float = 1.0, log: bool = True) -> tuple[ModelBundle, dict, pd.DataFrame]:
+               spread_factor: float = 1.0, log: bool = True, seed: int = C.SEED) -> tuple[ModelBundle, dict, pd.DataFrame]:
     """Fit attendance, CVAE, GBM baseline and support rule. Returns the bundle, training history, panel+attendance."""
     panel = panel.reset_index(drop=True)
     panel, att = add_expected_attendance(panel, fit_mask)
@@ -95,8 +95,9 @@ def fit_bundle(panel: pd.DataFrame, fit_mask: pd.Series, val_mask: pd.Series | N
     y_mean, y_std = float(log_y.mean()), float(log_y.std())
     shift = float(np.mean(log_y - np.log(train_df["expected_attendance"].to_numpy())))  # typical log rate
     n_dishes = int(panel["dish_idx"].max()) + 1
+    set_seed(seed)  # before the model is built, so the starting weights are the same every run
     model = CVAE(n_dishes, len(INPUT_COLUMNS), cfg)
-    rng_seed = C.SEED
+    rng_seed = seed
 
     def make_train(epoch: int) -> dict:
         noisy = noisy_weather_rows(train_df, np.random.default_rng(rng_seed + epoch))  # fresh forecast noise
@@ -112,7 +113,7 @@ def fit_bundle(panel: pd.DataFrame, fit_mask: pd.Series, val_mask: pd.Series | N
     support = SupportRule().fit(panel[fit_mask & usable(panel, False)])
     info = {"encoder": cfg.encoder, "best_epoch": hist["best_epoch"], "n_train_rows": int(len(train_df)),
             "attendance_sigma_log": att.sigma, "train_end": str(panel.loc[fit_mask, "date"].max().date()),
-            "seed": C.SEED, "synthetic_rows": 0 if extra is None else int(len(extra))}
+            "seed": seed, "synthetic_rows": 0 if extra is None else int(len(extra))}
     bundle = ModelBundle(att, tf, model, y_mean, y_std, shift, support, gbm, n_dishes, spread_factor, info)
     return bundle, hist, panel
 

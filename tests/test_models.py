@@ -113,3 +113,15 @@ def test_overrides_and_errors(service):
         service.forecast("2026-10-07", "brunch")
     with pytest.raises(ValueError):
         service.forecast("2026-10-07", "lunch", overrides=Overrides(weather_type="Snow"))
+
+
+def test_two_short_trainings_with_the_same_seed_give_identical_losses():
+    from feedforward.models.train import fit_bundle, load_panel
+    panel = load_panel()
+    small = panel[panel["date"] <= "2026-03-15"].copy()      # a small slice, trained for 2 epochs
+    mask = small["split"] == "train"
+    losses = []
+    for _ in range(2):
+        _, hist, _ = fit_bundle(small, mask, None, CVAEConfig(), fixed_epochs=2, log=False, seed=11)
+        losses.append(hist["train_loss"])
+    assert len(losses[0]) == 2 and losses[0] == losses[1]
