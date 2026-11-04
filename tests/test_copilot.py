@@ -260,11 +260,9 @@ def test_new_rules_keep_other_questions_out(keys, question):
     assert understand(question, keys).intent == "out_of_scope"
 
 
-GOOD = ("Short answer: The usual plan is 3,199 and we suggest cooking 3,430.
-Key drivers:
-- Last week 2,793 were wanted.
-"
+GOOD = ("Short answer: The usual plan is 3,199 and we suggest cooking 3,430.\nKey drivers:\n- Last week 2,793 were wanted.\n"
         "One caution: The likely range is 2,621 to 3,713.")
+BAD = "Short answer: Cook 7,777 portions.\nKey drivers:\n- x\nOne caution: y"
 
 
 @pytest.mark.parametrize("provider", ["groq", "gemini"])
@@ -287,10 +285,6 @@ def test_a_failed_request_is_not_retried_and_the_template_is_used(svc, monkeypat
 
 def test_a_bad_number_in_the_answer_is_rejected_after_one_request(svc, monkeypatch):
     seen = []
-    r = _ask(svc, _model("Short answer: Cook 7,777 portions.
-Key drivers:
-- x
-One caution: y", seen=seen), monkeypatch,
-             provider="groq")
+    r = _ask(svc, _model(BAD, seen=seen), monkeypatch, provider="groq")
     assert len(seen) == 1 and r["source"] == "template" and "7,777" not in r["answer"]
     assert r["answer"].startswith("Short answer:") and "not in the data" in r["fallback_reason"]
