@@ -5,7 +5,7 @@ The copilot answers in four steps. Only the last one uses a language model.
 1. **Understand** (rules, `copilot/nlu.py`): intent and entities from the question. No language model.
 2. **Compute** (plain Python, `copilot/context_builder.py`): the forecast or what if is run, and every figure the answer may use
    is put into one context JSON. No language model.
-3. **Write** (`copilot/explain.py`): one call to the hosted language model with PROMPT_V2, the context JSON and the question.
+3. **Write** (`copilot/explain.py`): one request to the hosted language model with PROMPT_V2, the context JSON and the question.
 4. **Check** (`explain.ungrounded_numbers`): every figure of 10 or more in the answer must appear in the context. If one does not,
    or if there is no key or no network, the deterministic template answer (`copilot/templates.py`) is shown instead.
 
@@ -18,13 +18,13 @@ it writes, which is why putting the exact figures in the prompt works better tha
 
 | | PROMPT_V1 | PROMPT_V2 (used by the app) |
 |---|---|---|
-| Role and boundary | none | kitchen copilot, explains only, never offers to act |
+| Role and boundary | none | kitchen copilot, explains only, never offers to act; six numbered rules in all |
 | Figures | none, the model must guess | context JSON with every figure |
 | Missing information | not handled | rule: say what is missing |
 | Uncertainty | not handled | rule: say so when the range is wide (`range_is_wide`) |
 | Examples | none | two short worked examples |
 | Format | free text | Short answer, Key drivers, One caution (under 120 words) |
-| Settings | default | temperature 0.2, at most 300 tokens |
+| Settings | default | temperature 0.2, at most 500 tokens, one request per answer (Groq `openai/gpt-oss-20b`, reasoning effort low; Gemini only if there is no Groq key) |
 
 ## The five use case scenarios
 
@@ -52,7 +52,7 @@ it writes, which is why putting the exact figures in the prompt works better tha
 python -m feedforward.copilot.compare_prompts
 ```
 
-Without a key the report is still written, with the template answers, and says clearly that the language model columns were not run.
+Without a key the script prints "No LLM key found. Set GROQ_API_KEY in .env and run again." and leaves the report as it is.
 
 ## Out of scope questions
 
