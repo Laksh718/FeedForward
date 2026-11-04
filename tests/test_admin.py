@@ -162,7 +162,7 @@ def test_csv_import_attendance(client):
 
 
 def test_csv_import_kitchen_log_future_date_is_rejected(client):
-    csv_text = f"date,meal_slot,dish_id,prepared_qty,consumed_qty\n2026-10-20,lunch,D120,3000,2800\n"
+    csv_text = "date,meal_slot,dish_id,prepared_qty,consumed_qty\n2026-10-20,lunch,D120,3000,2800\n"
     r = client.post("/api/admin/import", json={"table": "kitchen_log", "csv_text": csv_text}, headers=PIN).json()
     assert r["dates_saved"] == 0 and "future" in r["row_errors"][0]["message"]
 
