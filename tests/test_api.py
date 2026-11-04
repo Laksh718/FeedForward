@@ -40,7 +40,8 @@ def test_plan_core_and_all(client):
 
 def test_week(client):
     w = client.get("/api/week", params={"slot": "lunch", "start": "2026-10-07"}).json()
-    assert len(w["days"]) == 7 and len(w["past"]) == 6  # 2026-10-06 (today) is not recorded yet
+    assert len(w["days"]) == 7 and len(w["past"]) == 7  # the last 7 recorded days (2026-10-06, today, is not recorded yet)
+    assert w["past"][-1]["date"] == C.HISTORY_END
     assert all(d["p10"] <= d["p50"] <= d["p90"] for d in w["days"])
     one = client.get("/api/week", params={"slot": "lunch", "start": "2026-10-07", "dish_id": "D090"}).json()
     assert one["scope"] == "dish"

@@ -1,4 +1,4 @@
-"""Seven day view: forecast totals for the next week and the actual demand of the week before."""
+"""Seven day view: forecast totals for the next week and the actual demand of the last 7 days that have actuals."""
 
 from datetime import date as Date
 from datetime import timedelta
@@ -20,7 +20,7 @@ def _calendar_flags() -> pd.DataFrame:
 
 
 def week_response(svc: ForecastService, start: Date, slot: str, scope: str, dish_id: str | None) -> dict:
-    """Seven forecast days from `start`, and the seven days before it as actual demand."""
+    """Seven forecast days from `start`, and the last seven days with recorded demand before `start`."""
     days = []
     flags = _calendar_flags()
     for i in range(7):
@@ -34,7 +34,8 @@ def week_response(svc: ForecastService, start: Date, slot: str, scope: str, dish
                      "holiday": bool(f is not None and f["tn_public_holiday"]),
                      "expected_attendance": plan["expected_attendance"], "facts": plan.get("day_facts", {})})
     hist = svc.history
-    mask = (hist["meal_slot"] == slot) & (hist["date"] >= pd.Timestamp(start - timedelta(days=7))) & (hist["date"] < pd.Timestamp(start))
+    before = hist.loc[(hist["meal_slot"] == slot) & (hist["date"] < pd.Timestamp(start)), "date"]
+    mask = (hist["meal_slot"] == slot) & hist["date"].isin(sorted(before.unique())[-7:])   # days after the history ends have no actuals
     if dish_id:
         mask &= hist["dish_id"] == dish_id
     elif scope == "core":
