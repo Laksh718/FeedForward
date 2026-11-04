@@ -25,3 +25,7 @@ site/
 Thumbs.db
 .vscode/
 .idea/
+
+# Working documents kept on disk only
+FeedForward_Master_Document.md
+reports/validation_report.md
