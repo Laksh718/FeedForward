@@ -43,7 +43,7 @@ FeedForward/
       forecast_service.py week_view.py            forecast(...) entry point, 7 day view
     copilot/                        nlu, context_builder, prompts, llm, templates, explain, compare_prompts
     admin/                          schemas, store (LogStore, CsvLogStore), context, history, validation, compare, review_log
-    plugins/                        surplus_detector_stub.py, gan_extra_data.py   (teammates plug in here)
+    plugins/                        surplus_detector_stub.py (interface), gan_extra_data.py (GAN rows: generate, check, write)
   api/                              FastAPI: main.py, deps.py, schemas.py, services.py, routes/
   app/                              dashboard: index.html, css/, js/ (Home, Service board, Forecast desk, Calendar, Daily log)
   scripts/                          build_static_site.py, deploy_pages.sh (the GitHub Pages online demo)
@@ -101,7 +101,7 @@ unavailable, because Gemini's speed swings with demand), `ADMIN_PIN` (needed for
 | Learn from real entries | `python -m feedforward.models.train --include-admin`, then `--final --include-admin` | uses the Daily log rows, warns below 28 real days |
 | Prompt comparison (needs a key) | `python -m feedforward.copilot.compare_prompts` | `reports/prompt_comparison.md` |
 | Start the API and dashboard | `uvicorn api.main:app --reload` | http://127.0.0.1:8000/ (API docs at `/docs`) |
-| Tests | `pytest` | 120 plus tests |
+| Tests | `pytest` | 157 tests (one NLP test needs NLTK WordNet data and fails without it) |
 | Browser test | `node tests/ui_smoke.mjs` (Node 22, Edge, server on port 8765 with `ADMIN_PIN=1234` and a temp `FEEDFORWARD_ADMIN_LOG_DIR`) | PASS or FAIL per interaction |
 | Bundle the data code into one document | `python -m feedforward.export_code` | `docs/code_bundle_preprocessing.md` |
 
@@ -236,11 +236,28 @@ open http://localhost:8000.
 `docs/concept_map.md` (concept, slide topic, where it is used, why it fits, and what does not apply), `docs/pipeline.md`,
 `docs/data_dictionary.md`, `docs/objectives_map.md`, `docs/prompt_scenarios.md`, `docs/decisions.md` and the reports folder.
 
+## Rare event GAN
+
+Objective 2: a conditional WGAN-GP learns what demand looks like on rare days (festival, public holiday, exam week, heavy rain) from the
+**train period only**, and produces extra synthetic rows. A validator filters them (not below zero, not above 1.3 times the dish's largest real
+demand, within the plausible demand per attendee for the dish category, not a copy of a real row). The rows are labelled (`synthetic = 1`,
+`source = gan`), down weighted (default 0.3, real rows weigh 1) and never used for validation, calibration or testing.
+**Real data is the only truth: in the ablation (`reports/gan_ablation.md`) the GAN rows did not improve the forecasts, so the deployed model does not use them.**
+
+```bash
+python -m feedforward.data.gan_data                                     # training table and scaler (artifacts/gan/)
+python -m feedforward.models.train_gan --epochs 600 --seed 42           # train the GAN (about 5 minutes on CPU)
+python -m feedforward.plugins.gan_extra_data --generate --out artifacts/gan/extra_rows.csv   # make, check and write rows; writes reports/gan_report.md
+python -m feedforward.models.train --extra-data artifacts/gan/extra_rows.csv --extra-weight 0.3   # CVAE with the rows (dev run)
+python reports/gan_ablation.py                                          # CVAE with and without GAN rows, 3 seeds (about 50 minutes) -> reports/gan_ablation.md
+```
+
+Files: `data/gan_data.py` (table, scaler), `models/gan.py` (generator, critic, losses), `models/train_gan.py`, `plugins/gan_extra_data.py`,
+`models/gan_report.py`, `reports/gan_report.md`, `reports/gan/` (histograms), `reports/gan_ablation.md`. Outputs in `artifacts/gan/` are not committed.
+
 ## Where each teammate plugs in
 
-- **GAN rare event generator:** write synthetic rows with the columns of `artifacts/timeseries/panel.parquet` plus `expected_attendance`
-  and run `python -m feedforward.models.train --extra-data FILE`. `plugins/gan_extra_data.py` validates them; they are down weighted
-  (`EXTRA_DATA_WEIGHT`) and never used for validation, calibration or testing.
+- **GAN rare event generator:** built, see [Rare event GAN](#rare-event-gan). `plugins/gan_extra_data.py` makes, checks and writes the rows that `train.py --extra-data` reads.
 - **Surplus and anomaly detector:** `ForecastService` uses `models/surplus_detector.InventoryAwareSurplusDetector` by default, combining
   the usual plan versus forecast range (demand risk) with days to expiry, stock cover and kilograms expiring soon per dish and date from
   `artifacts/timeseries/inventory_features.parquet` (inventory risk); the higher of the two wins. Swap it for another implementation of

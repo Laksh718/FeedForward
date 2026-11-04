@@ -42,6 +42,12 @@ Slide deck topics are named by subject.
 | Feedback and continuous improvement (architecture stage 9) | ML lifecycle | `admin/`, `train.py --include-admin` | Real entries are saved, merged with the history keeping `data_source`, and used for retraining with a higher weight |
 | Sequence models: RNN, LSTM, GRU and gates | Recurrent networks | `data/timeseries.py` (21 day windows), `CVAEConfig(encoder="gru")`, `train --encoder gru` | Optional experiment. A GRU summarises the history; its update and reset gates decide what to keep or forget. Result: no gain over the MLP (see metrics_summary.md) |
 | Transformers and LLMs, attention | Transformers | `copilot/llm.py`, `docs/prompt_scenarios.md` | The hosted LLM is only used to write explanations; attention lets it weigh which words in the question and the figures matter. No training |
+| Generator | Generative adversarial networks | `models/gan.py: Generator` | Turns random noise plus the conditions (event, dish category, slot) into a demand for a rare day |
+| Critic | Generative adversarial networks | `models/gan.py: Critic` | Scores how real a demand looks for its conditions; it has no sigmoid, it gives a plain score |
+| Wasserstein loss | GAN training | `models/gan.py: critic_loss, generator_loss` | The critic widens the score gap between real and fake, the generator tries to close it; this gives smoother training |
+| Gradient penalty | GAN training | `models/gan.py: gradient_penalty` | Keeps the critic from changing too fast (lambda 10), which keeps training stable |
+| Mode collapse | GAN training | `models/train_gan.py: collapse_check` | Every 50 epochs the spread of generated demand per event type is compared with the real spread; training stops if it nearly vanishes |
+| Conditional GAN | Generative models | `data/gan_data.py: GanScaler.conditions`, `plugins/gan_extra_data.py` | The GAN is told the event, dish category, slot and attendance level, so it makes demand for that situation only |
 
 ## Not applicable, and why
 
