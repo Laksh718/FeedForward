@@ -4,7 +4,7 @@
 // the open plan, the plans of the coming days and the activity feed, and bumps `state.dataVersion`, so every view
 // that keeps its own data (Forecast, Plans, Rare events, Calendar, Daily log) reloads it too. The server is also asked
 // every few seconds whether anything was saved elsewhere (another tab, another person, the automation).
-import { api, ApiError, REMOTE, STATIC } from "./api.js";
+import { api, ApiError, auth, REMOTE, STATIC } from "./api.js";
 
 export const state = {
   health: null, slot: "lunch", date: null, weekStart: null, scope: "core", dishId: null,
@@ -13,6 +13,8 @@ export const state = {
   chat: [], chatBusy: false,
   plans: null, activity: [], dataVersion: 0, serverVersion: null,
   eventPreset: null,             // set by the Calendar or Home before opening Rare events: {date, event}
+  user: null,                    // the signed in account (kitchen or NGO), or null
+  donationPreset: null,          // set by Rare events before opening Donations: {date, slot, items, note}
 };
 
 const listeners = new Set();
@@ -99,7 +101,7 @@ export async function init() {
     emit();
     return;
   }
-  await Promise.all([refresh(), loadShared()]);
+  await Promise.all([refresh(), loadShared(), restoreSession()]);
   if (!STATIC || REMOTE) {
     setInterval(poll, POLL_MS);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
@@ -124,6 +126,13 @@ export function openPlan(date, slot) {
   if (slotChanged) state.dishId = null;
   location.hash = "service";
   return refresh(slotChanged ? undefined : { plan: true, menu: true });
+}
+
+// Open Donations with an offer already filled in (from Rare events: the surplus an event leaves).
+export function offerSurplus(preset) {
+  state.donationPreset = preset;
+  location.hash = "donate";
+  emit();
 }
 
 // Open Rare events with a day and an event chosen.
@@ -176,7 +185,7 @@ export async function ask(question, context = {}) {
   emit();
   try {
     const r = await api.post("/chat", { question: text, date, meal_slot: slot, scope: state.scope, overrides: context.overrides ?? state.overrides });
-    state.chat.push({ role: "bot", text: r.answer, source: r.source, reason: r.fallback_reason || "" });
+    state.chat.push({ role: "bot", text: r.answer, source: r.source, reason: r.fallback_reason || "", documents: r.documents || [] });
   } catch (e) {
     const missing = e.status === 404 || e.status === 405;
     state.chat.push({ role: "err", text: missing
@@ -188,3 +197,68 @@ export async function ask(question, context = {}) {
 }
 
 export function clearChat() { state.chat = []; emit(); }
+
+// ---------- accounts: the session token is kept in this browser so a reload stays signed in
+const SESSION_KEY = "feedforward-session";
+function keep(token) {
+  auth.token = token || "";
+  try { if (token) localStorage.setItem(SESSION_KEY, token); else localStorage.removeItem(SESSION_KEY); } catch { /* storage blocked */ }
+}
+
+export async function restoreSession() {
+  let token = "";
+  try { token = localStorage.getItem(SESSION_KEY) || ""; } catch { /* storage blocked */ }
+  if (!token) return;
+  auth.token = token;
+  try {
+    const { user } = await api.get("/auth/me");
+    state.user = user;
+    if (!user) keep("");
+  } catch { /* server asleep or offline: keep the token and try again on the next load */ }
+  emit();
+}
+
+export async function signIn(email, password) {
+  const r = await api.post("/auth/login", { email, password });
+  keep(r.token);
+  state.user = r.user;
+  notify(r.message, "ok");
+  state.dataVersion += 1;
+  emit();
+  return r;
+}
+
+export async function register(body) {
+  const r = await api.post("/auth/register", body);
+  keep(r.token);
+  state.user = r.user;
+  notify(r.message, r.user.status === "active" ? "ok" : "warn");
+  state.dataVersion += 1;
+  emit();
+  return r;
+}
+
+// One click into the shared demo kitchen or demo NGO (no password).
+export async function demoSignIn(role) {
+  const r = await api.post("/auth/demo", { role });
+  keep(r.token);
+  state.user = r.user;
+  notify(r.message, "ok");
+  state.dataVersion += 1;
+  emit();
+  return r;
+}
+
+export async function signOut() {
+  try { await api.post("/auth/logout", {}); } catch { /* the token is forgotten here anyway */ }
+  keep("");
+  state.user = null;
+  notify("Signed out.", "ok");
+  state.dataVersion += 1;
+  emit();
+}
+
+export async function refreshUser() {
+  if (!auth.token) return;
+  try { state.user = (await api.get("/auth/me")).user; emit(); } catch { /* keep what we have */ }
+}

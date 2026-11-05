@@ -9,7 +9,7 @@ export class ApiError extends Error {
   }
 }
 
-export const auth = { pin: "" };   // sent as X-Admin-Pin on every request once the admin has unlocked the Daily log
+export const auth = { pin: "", token: "" };   // X-Admin-Pin once the Daily log is unlocked; the account session as a Bearer token
 
 // Static site (GitHub Pages): scripts/build_static_site.py adds <meta name="feedforward-mode" content="static">
 // and a prebuilt snapshot under data/. Served by uvicorn, the meta tag is absent and every call goes to /api.
@@ -29,7 +29,7 @@ async function fetchApi(base, path, options, asText, unreachable) {
   const timer = base ? setTimeout(() => ctrl.abort(), REMOTE_TIMEOUT_MS) : null;
   try {
     res = await fetch(`${base}/api${path}`, { ...options, signal: ctrl.signal,
-      headers: { ...(options.headers || {}), ...(auth.pin ? { "X-Admin-Pin": auth.pin } : {}) } });
+      headers: { ...(options.headers || {}), ...(auth.pin ? { "X-Admin-Pin": auth.pin } : {}), ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}) } });
   } catch {
     throw new ApiError(0, ...unreachable);
   } finally {
@@ -53,7 +53,7 @@ const REMOTE_DOWN = ["Could not reach the FeedForward server.",
 const serverDown = (e) => e.status === 0 || e.status >= 500;
 // Calls that should reach the server whenever it is up: answers there are live and saved for everyone.
 const serverFirst = (method, path) => ["/chat", "/review", "/plans/review", "/events/approve"].includes(path)
-  || path.startsWith("/admin") || path.startsWith("/activity");
+  || ["/admin", "/activity", "/auth", "/accounts", "/knowledge", "/donations"].some((p) => path.startsWith(p));
 
 async function staticWithServer(path, options, asText) {
   const url = new URL(path, "https://feedforward.invalid");

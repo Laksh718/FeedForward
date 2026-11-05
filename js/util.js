@@ -62,6 +62,7 @@ export function hideTip() { if (tip) tip.hidden = true; }
 export const SOURCE_NOTE = {
   template: "Standard wording from the figures on this page (language model not used).",
   demo: "Online demo note (the copilot itself runs on the FeedForward server).",
+  documents: "Quoted from the kitchen's uploaded documents (Documents view).",
 };
 
 // The note for one answer, saying why the standard wording was used when the language model was not.

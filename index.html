@@ -36,11 +36,19 @@
         <button role="tab" id="tab-plans" aria-controls="view-plans" data-view-tab="plans" data-icon="plans" aria-selected="false"><span class="tab-long">Plans</span><span class="tab-short">Plans</span></button>
         <button role="tab" id="tab-events" aria-controls="view-events" data-view-tab="events" data-icon="bolt" aria-selected="false"><span class="tab-long">Rare events</span><span class="tab-short">Events</span></button>
         <button role="tab" id="tab-copilot" aria-controls="view-copilot" data-view-tab="copilot" data-icon="copilot" aria-selected="false"><span class="tab-long">Copilot</span><span class="tab-short">Copilot</span></button>
-        <button role="tab" id="tab-calendar" aria-controls="view-calendar" data-view-tab="calendar" data-icon="calendar" aria-selected="false"><span class="tab-long">Calendar</span><span class="tab-short">Calendar</span></button>
-        <button role="tab" id="tab-admin" aria-controls="view-admin" data-view-tab="admin" data-icon="log" aria-selected="false"><span class="tab-long">Daily log</span><span class="tab-short">Log</span></button>
+        <button role="tab" id="tab-offers" aria-controls="view-donate" data-view-tab="donate" data-icon="leaf" aria-selected="false" class="ngo-only"><span class="tab-long">Food offers</span><span class="tab-short">Offers</span></button>
+        <div class="more" id="more">
+          <button type="button" class="more-btn" id="more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="more-menu" data-icon="grid"><span class="more-label" id="more-label">More</span><svg class="ic more-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+          <div class="more-menu glass" id="more-menu" role="menu" hidden>
+            <button type="button" role="menuitem" data-view-tab="calendar" data-icon="calendar"><span>Calendar<small>Holidays, exams and plan status</small></span></button>
+            <button type="button" role="menuitem" data-view-tab="admin" data-icon="log"><span>Daily log<small>What really happened, automation</small></span></button>
+            <button type="button" role="menuitem" data-view-tab="donate" data-icon="leaf"><span>Donations<small>Surplus food for NGOs</small></span></button>
+            <button type="button" role="menuitem" data-view-tab="docs" data-icon="book"><span>Documents<small>SOPs the copilot follows</small></span></button>
+          </div>
+        </div>
       </div>
     </nav>
-    <a class="topbar-link" href="https://github.com/Laksh718/FeedForward" target="_blank" rel="noopener" data-icon="code"><span>Source</span></a>
+    <a class="topbar-link topbar-account" href="#account" id="topbar-account" data-icon="person"><span id="topbar-account-t">Sign in</span></a>
   </header>
 
   <div id="banner" class="banner" role="alert" hidden></div>
@@ -51,8 +59,11 @@
     <div id="view-plans" class="view" role="tabpanel" aria-labelledby="tab-plans" data-view-panel="plans" hidden></div>
     <div id="view-events" class="view" role="tabpanel" aria-labelledby="tab-events" data-view-panel="events" hidden></div>
     <div id="view-copilot" class="view" role="tabpanel" aria-labelledby="tab-copilot" data-view-panel="copilot" hidden></div>
-    <div id="view-calendar" class="view" role="tabpanel" aria-labelledby="tab-calendar" data-view-panel="calendar" hidden></div>
-    <div id="view-admin" class="view" role="tabpanel" aria-labelledby="tab-admin" data-view-panel="admin" hidden></div>
+    <div id="view-calendar" class="view" role="tabpanel" aria-label="Calendar" data-view-panel="calendar" hidden></div>
+    <div id="view-admin" class="view" role="tabpanel" aria-label="Daily log" data-view-panel="admin" hidden></div>
+    <div id="view-donate" class="view" role="tabpanel" aria-label="Donations" data-view-panel="donate" hidden></div>
+    <div id="view-docs" class="view" role="tabpanel" aria-label="Documents" data-view-panel="docs" hidden></div>
+    <div id="view-account" class="view" role="region" aria-label="Account" data-view-panel="account" hidden></div>
   </main>
   <div id="toasts" class="toasts" aria-hidden="true"></div>
   <script type="module" src="js/main.js"></script>

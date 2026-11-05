@@ -5,7 +5,7 @@
 import { api } from "./api.js";
 import { liquid, replay, setHTML } from "./fx.js";
 import { icon } from "./icons.js";
-import { notify, openPlan, state, subscribe, synced } from "./state.js";
+import { notify, offerSurplus, openPlan, state, subscribe, synced } from "./state.js";
 import { SLOTS, cap, esc, fmt, planKind, shortDate, statusPill } from "./util.js";
 
 const EVENT_ICON = { festival: "star", holiday: "sun", exam_week: "book", rain: "rain" };
@@ -45,6 +45,7 @@ const SKELETON = `
         <p class="dk-panel-note" id="ev-gen-note"></p><div class="ev-hist" id="ev-hist"></div></section>
       <section class="dk-card glass" aria-labelledby="ev-dish-t"><h2 id="ev-dish-t">${icon("service")}Dish by dish</h2>
         <div class="tablewrap" id="ev-dishes"></div></section>
+      <section class="dk-card glass ev-surplus" aria-labelledby="ev-sur-t"><h2 id="ev-sur-t">${icon("leaf")}Food that would be left over</h2><div id="ev-surplus"></div></section>
       <section class="dk-card glass" aria-labelledby="ev-ing-t"><h2 id="ev-ing-t">${icon("list")}Ingredients to have ready</h2><div id="ev-ing"></div></section>
       <section class="dk-card glass ev-approve" aria-labelledby="ev-ok-t"><h2 id="ev-ok-t">${icon("check")}Approve the event plan</h2>
         <div class="ev-options" id="ev-options" role="radiogroup" aria-label="Quantities to cook"></div>
@@ -88,7 +89,7 @@ export function mountEvents(root) {
   root.innerHTML = SKELETON;
   const q = (s) => root.querySelector(s);
   root.querySelectorAll(".seg").forEach(liquid);
-  const V = { types: [], upcoming: [], gan: true, event: "festival", date: null, slot: "lunch", att: 0, option: "forecast", result: null, error: null, busy: false };
+  const V = { surplus: [], types: [], upcoming: [], gan: true, event: "festival", date: null, slot: "lunch", att: 0, option: "forecast", result: null, error: null, busy: false };
   let seq = 0, mounted = false, lastVersion = -1;
 
   async function load() {
@@ -122,6 +123,11 @@ export function mountEvents(root) {
     V.date = b.dataset.date;
     V.event = b.dataset.event;
     load();
+  });
+  root.addEventListener("click", (e) => {
+    if (!e.target.closest("#ev-offer") || !V.result) return;
+    offerSurplus({ date: V.result.date, slot: V.result.meal_slot, items: V.surplus,
+      note: `Expected leftover on ${V.result.event_label.toLowerCase()} day if the normal plan is cooked. Check what is really left before you send it.` });
   });
   q("#ev-options").addEventListener("change", (e) => { if (e.target.name === "ev-option") { V.option = e.target.value; render(); } });
 
@@ -198,6 +204,16 @@ export function mountEvents(root) {
           <td class="cook">${fmt(cook)}</td><td>${tone ? `<span class="pill ${tone}">${label}</span>` : label}</td></tr>`;
       }).join("")}</tbody></table>` : `<div class="empty"><strong>No main dishes on the menu for this meal.</strong>Pick another meal or day.</div>`);
 
+    // surplus: what is left if the kitchen cooks its normal plan on the event day (most likely demand under the event)
+    const left = r.dishes.map((d) => ({ dish_id: d.dish_id, dish_name: d.dish_name, portions: Math.round(((d.normal_recommended ?? d.usual_plan ?? 0) - d.p50) / 10) * 10 }))
+      .filter((d) => d.portions > 0).sort((a, b) => b.portions - a.portions);
+    const leftTotal = left.reduce((a, d) => a + d.portions, 0);
+    V.surplus = left;
+    setHTML(q("#ev-surplus"), left.length ? `<p class="dk-panel-note">If the kitchen cooks its <strong>normal plan</strong> on this day, the most likely leftover is
+        <strong class="num">${fmt(leftTotal)} portions</strong> of the main dishes. Cook the event plan instead, or offer this food to an NGO before service.</p>
+      <ul class="dn-items">${left.map((d) => `<li><span>${esc(d.dish_name)}</span><b class="num">${fmt(d.portions)}</b></li>`).join("")}</ul>
+      <div class="ev-approve-row"><button class="btn btn-primary" type="button" id="ev-offer">${icon("send")}Offer this surplus to NGOs</button></div>`
+      : `<p class="dk-panel-note">${icon("check")} With this event the kitchen's normal plan is not expected to leave food over: demand is at or above it.</p>`);
     const im = r.impact;
     setHTML(q("#ev-ing"), im?.ingredients?.length ? `<p class="dk-panel-note">Against a normal day: ${signed(im.ingredient_totals.change_kg)} kg of ingredients in total. The biggest changes:</p>
       <div class="tablewrap"><table class="wi-table"><thead><tr><th scope="col">Ingredient</th><th scope="col">Normal day</th><th scope="col">With the event</th><th scope="col">Change</th></tr></thead><tbody>${
