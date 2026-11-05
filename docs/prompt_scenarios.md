@@ -24,7 +24,7 @@ it writes, which is why putting the exact figures in the prompt works better tha
 | Uncertainty | not handled | rule: say so when the range is wide (`range_is_wide`) |
 | Examples | none | two short worked examples |
 | Format | free text | Short answer, Key drivers, One caution (under 120 words) |
-| Settings | default | temperature 0.2, at most 500 tokens, one request per answer (Groq `openai/gpt-oss-20b`, reasoning effort low; Gemini only if there is no Groq key) |
+| Settings | default | temperature 0.2, at most 500 tokens, one request per answer (Google Gemini, `gemini-3.1-flash-lite` by default) |
 
 ## The five use case scenarios
 
@@ -52,7 +52,7 @@ it writes, which is why putting the exact figures in the prompt works better tha
 python -m feedforward.copilot.compare_prompts
 ```
 
-Without a key the script prints "No LLM key found. Set GROQ_API_KEY in .env and run again." and leaves the report as it is.
+Without a key the script prints "No LLM key found. Set GEMINI_API_KEY in .env and run again." and leaves the report as it is.
 
 ## Out of scope questions
 

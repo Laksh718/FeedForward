@@ -61,7 +61,6 @@ def svc():
 @pytest.fixture(autouse=True)
 def no_key(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "")
-    monkeypatch.setenv("GROQ_API_KEY", "")
 
 
 @pytest.mark.parametrize(("question", "intent"), INTENT_CASES)
@@ -125,21 +124,18 @@ def test_grounding_check():
 
 
 def _model(text: str | None = None, fail: bool = False, seen: list | None = None):
-    """A fake Gemini (or Groq) endpoint that answers with `text` in the right shape for whichever URL is called."""
+    """A fake Gemini endpoint that answers with `text`."""
     def handler(request: httpx.Request) -> httpx.Response:
         if seen is not None:
             seen.append(request)
         if fail:
             raise httpx.ConnectError("offline")
-        if "generativelanguage.googleapis.com" in str(request.url):
-            return httpx.Response(200, json={"candidates": [{"content": {"role": "model", "parts": [{"text": text}]}}]})
-        return httpx.Response(200, json={"choices": [{"message": {"content": text}}]})
+        return httpx.Response(200, json={"candidates": [{"content": {"role": "model", "parts": [{"text": text}]}}]})
     return httpx.MockTransport(handler)
 
 
-def _ask(svc, transport, monkeypatch, key="test-key", q="Why is Chappathi above the usual plan?", provider="gemini"):
-    monkeypatch.setenv("GEMINI_API_KEY", key if provider == "gemini" else "")
-    monkeypatch.setenv("GROQ_API_KEY", key if provider == "groq" else "")
+def _ask(svc, transport, monkeypatch, key="test-key", q="Why is Chappathi above the usual plan?"):
+    monkeypatch.setenv("GEMINI_API_KEY", key)
     return answer_question(q, svc, TODAY + timedelta(days=1), "lunch", "core", Overrides(), TODAY, transport=transport)
 
 
@@ -157,20 +153,13 @@ def test_good_model_answer_is_used(svc, monkeypatch):
     assert body["generationConfig"]["temperature"] == llm.TEMPERATURE
 
 
-def test_groq_still_works_when_it_is_the_only_key(svc, monkeypatch):
-    good = ("Short answer: The usual plan is 3,199 and we suggest cooking 3,430.\nKey drivers:\n- Last week 2,793 were wanted.\n"
-            "One caution: The likely range is 2,621 to 3,713.")
-    seen = []
-    r = _ask(svc, _model(good, seen=seen), monkeypatch, provider="groq")
-    assert r["source"] == "llm" and "api.groq.com" in str(seen[0].url)
-
-
-def test_groq_is_first_gemini_is_the_fallback_and_odd_replies_fail(monkeypatch):
+def test_gemini_is_the_only_model_and_odd_replies_fail(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "q")       # a leftover Groq key is ignored
+    assert not llm.is_configured()
+    with pytest.raises(llm.LLMUnavailable):
+        llm.complete([{"role": "user", "content": "hi"}])
     monkeypatch.setenv("GEMINI_API_KEY", "g")
-    monkeypatch.setenv("GROQ_API_KEY", "q")
-    assert llm.provider() == "groq"
-    monkeypatch.setenv("GROQ_API_KEY", "")
-    assert llm.provider() == "gemini"
+    assert llm.is_configured()
     blocked = httpx.MockTransport(lambda r: httpx.Response(200, json={"candidates": [], "promptFeedback": {"blockReason": "SAFETY"}}))
     with pytest.raises(llm.LLMUnavailable):
         llm.complete([{"role": "user", "content": "hi"}], blocked)
@@ -265,26 +254,23 @@ GOOD = ("Short answer: The usual plan is 3,199 and we suggest cooking 3,430.\nKe
 BAD = "Short answer: Cook 7,777 portions.\nKey drivers:\n- x\nOne caution: y"
 
 
-@pytest.mark.parametrize("provider", ["groq", "gemini"])
-def test_exactly_one_request_per_answer(svc, monkeypatch, provider):
+def test_exactly_one_request_per_answer(svc, monkeypatch):
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
     seen = []
-    r = _ask(svc, _model(GOOD, seen=seen), monkeypatch, provider=provider)
+    r = _ask(svc, _model(GOOD, seen=seen), monkeypatch)
     assert r["source"] == "llm" and len(seen) == 1
-    assert ("api.groq.com" in str(seen[0].url)) == (provider == "groq")
-    if provider == "groq":
-        body = json.loads(seen[0].content)
-        assert body["model"] == "openai/gpt-oss-20b" and body["reasoning_effort"] == "low"
+    assert "generativelanguage.googleapis.com" in str(seen[0].url) and llm.GEMINI_DEFAULT_MODEL in seen[0].url.path
 
 
 def test_a_failed_request_is_not_retried_and_the_template_is_used(svc, monkeypatch):
     seen = []
     busy = httpx.MockTransport(lambda request: (seen.append(request), httpx.Response(503, json={}))[1])
-    r = _ask(svc, busy, monkeypatch, provider="groq")
+    r = _ask(svc, busy, monkeypatch)
     assert len(seen) == 1 and r["source"] == "template" and "could not be reached" in r["fallback_reason"]
 
 
 def test_a_bad_number_in_the_answer_is_rejected_after_one_request(svc, monkeypatch):
     seen = []
-    r = _ask(svc, _model(BAD, seen=seen), monkeypatch, provider="groq")
+    r = _ask(svc, _model(BAD, seen=seen), monkeypatch)
     assert len(seen) == 1 and r["source"] == "template" and "7,777" not in r["answer"]
     assert r["answer"].startswith("Short answer:") and "not in the data" in r["fallback_reason"]

@@ -2,7 +2,7 @@
 
 python -m feedforward.copilot.compare_prompts
 
-Needs GROQ_API_KEY in .env. Without a key it prints a message and stops without touching the report: no answer is ever made up.
+Needs GEMINI_API_KEY in .env. Without a key it prints a message and stops without touching the report: no answer is ever made up.
 """
 
 import re
@@ -46,7 +46,7 @@ def cells(s: dict) -> list[str]:
 def main() -> None:
     """Run V1 and V2 on the five scenarios and write the report (real answers only)."""
     if not llm.is_configured():
-        print("No LLM key found. Set GROQ_API_KEY in .env and run again.")
+        print("No LLM key found. Set GEMINI_API_KEY in .env and run again.")
         return                                   # the report is left exactly as it is
     svc, today = ForecastService(), date.fromisoformat(C.TODAY)
     table, body = [HEADER, "|---|---|---|---|---|---|---|"], []

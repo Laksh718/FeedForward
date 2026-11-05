@@ -40,7 +40,6 @@ sys.path[:0] = [str(ROOT / "src"), str(ROOT)]
 # overrides a variable that is already set (even to an empty value).
 os.environ["FEEDFORWARD_ADMIN_LOG_DIR"] = tempfile.mkdtemp(prefix="feedforward-static-")
 os.environ["GEMINI_API_KEY"] = ""
-os.environ["GROQ_API_KEY"] = ""
 
 from fastapi.testclient import TestClient  # noqa: E402
 
