@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 
 from api import services
 from api.deps import _load, cors_origins
-from api.routes import admin, calendar, catalogue, copilot, events, forecast, health, plans, review, whatif
+from api.routes import admin, calendar, catalogue, community, copilot, events, forecast, health, plans, review, whatif
 from feedforward import config as C
 from feedforward.admin import automation
 
@@ -55,8 +55,8 @@ def create_app() -> FastAPI:
     """Build the app. CORS stays closed unless CORS_ORIGINS is set."""
     app = FastAPI(title="FeedForward", version="0.2.0", description="Predict. Prevent. Provide.", lifespan=lifespan)
     if cors_origins():
-        app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["GET", "POST", "DELETE"], allow_headers=["*"])
-    for module in (health, forecast, whatif, review, catalogue, copilot, admin, calendar, plans, events):
+        app.add_middleware(CORSMiddleware, allow_origins=cors_origins(), allow_methods=["GET", "POST", "DELETE"], allow_headers=["*"])  # Authorization and X-Admin-Pin included
+    for module in (health, forecast, whatif, review, catalogue, copilot, admin, calendar, plans, events, community):
         app.include_router(module.router, prefix="/api")
 
     @app.exception_handler(ValueError)

@@ -78,6 +78,12 @@ export function feedItem(e) {
     withdraw: () => ["close", `Decision withdrawn: ${day}${slot}`, "warn"],
     log: () => ["log", `Daily log saved for ${day}${e.by ? ` by ${esc(e.by)}` : ""}`, "ok"],
     log_auto: () => ["auto", `Daily log filled automatically for ${day}`, "auto"],
+    donation_offer: () => ["leaf", `${esc(e.who)} offered ${fmt(e.portions)} portions (${day}${slot})`, "ok"],
+    donation_requested: () => ["leaf", `${esc(e.who)} asked for ${fmt(e.portions)} portions`, "warn"],
+    donation_accepted: () => ["check", `Request of ${esc(e.who)} accepted (${fmt(e.portions)} portions)`, "ok"],
+    donation_collected: () => ["leaf", `${esc(e.who)} collected ${fmt(e.portions)} portions`, "ok"],
+    donation_declined: () => ["close", `Request of ${esc(e.who)} declined`, "warn"],
+    donation_withdrawn: () => ["close", `${esc(e.who)} withdrew a request`, "warn"],
     automation: () => ["auto", `Automatic run: ${plural(e.approved_count ?? 0, "plan")} approved, ${plural((e.logged_dates ?? []).length, "day")} logged`, "auto"],
   };
   const [ic, text, tone] = map[e.kind]?.() ?? ["info", esc(e.kind), ""];

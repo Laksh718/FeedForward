@@ -26,6 +26,8 @@ const VIEWS = [
   { view: "copilot", icon: "copilot", title: "Copilot", desc: "Ask about any plan in plain words. It explains the numbers and never changes them.", go: "Ask a question", tone: "t-teal" },
   { view: "calendar", icon: "calendar", title: "Calendar", desc: "Holidays, festivals and exam weeks, with each day's plan status, cross-checked against a live calendar.", go: "See the month", tone: "t-amber" },
   { view: "admin", icon: "log", title: "Daily log", desc: "Record what really happened, fill it from the approved plans, and switch on automation.", go: "Log a day", tone: "t-ink" },
+  { view: "donate", icon: "leaf", title: "Donations", desc: "Offer surplus food to NGOs and help groups; they ask for it and collect it in time.", go: "Give food", tone: "t-green" },
+  { view: "docs", icon: "book", title: "Documents", desc: "Upload SOPs and food safety rules. The copilot quotes them and donations follow them.", go: "Add an SOP", tone: "t-ink" },
 ];
 
 const FEATURES = ["Ranges, not single numbers", "Dish by dish quantities", "Seven days ahead", "Rare event plans", "Surplus risk flags",
@@ -140,7 +142,7 @@ const SKELETON = `
 
   <section class="ld-section" aria-labelledby="ld-views-t">
     <div class="ld-head reveal">
-      <p class="eyebrow">Seven views, one kitchen</p>
+      <p class="eyebrow">One kitchen, every step</p>
       <h2 id="ld-views-t">Everything the kitchen needs before service</h2>
     </div>
     <div class="ld-cards">
