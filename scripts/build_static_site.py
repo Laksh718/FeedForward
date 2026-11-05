@@ -91,13 +91,14 @@ def single_overrides() -> list[dict]:
 
 
 def chip_questions() -> list[str]:
-    """The suggested questions of both views, read from the page code so they never drift apart."""
+    """The questions the Copilot view suggests, read from the page code so they never drift apart."""
+    text = (APP_DIR / "js" / "copilot.js").read_text(encoding="utf-8")
+    block = re.search(r"^const GROUPS = \[(.*?)^\];", text, re.M | re.S)
+    if not block:
+        raise SystemExit("Could not find the GROUPS list in app/js/copilot.js")
     out = []
-    for name in ("service.js", "desk.js"):
-        m = re.search(r"^const CHIPS = (\[.*?\]);", (APP_DIR / "js" / name).read_text(encoding="utf-8"), re.M)
-        if not m:
-            raise SystemExit(f"Could not find the CHIPS list in app/js/{name}")
-        out += [q for q in json.loads(m.group(1)) if q not in out]
+    for questions in re.findall(r"\[\s*\"[^\"]+\",\s*\[(.*?)\]\]", block.group(1), re.S):
+        out += [q for q in re.findall(r"\"([^\"]+)\"", questions) if q not in out]
     return out
 
 

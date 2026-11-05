@@ -4,6 +4,8 @@ Plain Python does all the work: build features, run the CVAE, compute the usual 
 No language model is involved here; the copilot only explains the numbers this module returns.
 """
 
+import copy
+import threading
 from dataclasses import dataclass
 
 import numpy as np
@@ -19,6 +21,7 @@ from feedforward.models.surplus_detector import InventoryAwareSurplusDetector
 from feedforward.models.train import FINAL_DIR
 from feedforward.plugins.surplus_detector_stub import SurplusDetector
 
+CACHE_SIZE = 600   # plain forecasts (no what if) kept in memory: about 20 weeks of four slots
 TOTALS_NOTE = "P10 and P90 totals add dish ranges, so they form a wider band than the true range of the total."
 
 
@@ -88,13 +91,35 @@ class ForecastService:
         self.inventory_last_day = self.inventory_features.index.get_level_values("date").max()
         self.detector = detector or InventoryAwareSurplusDetector()
         self.recommend_quantile = recommend_quantile
+        self._cache: dict = {}
+        self._cache_lock = threading.Lock()
 
     def forecast(self, date, meal_slot: str, dish_ids: list[str] | None = None, overrides: Overrides | None = None,
                  n_samples: int = C.N_SAMPLES) -> dict:
-        """Range (P10, P50, P90), recommended quantity, usual plan and surplus risk for each dish of a slot."""
+        """Range (P10, P50, P90), recommended quantity, usual plan and surplus risk for each dish of a slot.
+
+        The plain forecast of a date and slot (no what if, every dish, the default number of samples) is kept in
+        memory, so every page that shows it gets the same numbers at once. A new service (after a save) starts empty.
+        """
         if meal_slot not in C.MEAL_SLOTS:
             raise ValueError(f"Unknown meal slot '{meal_slot}'. Choose one of {list(C.MEAL_SLOTS)}")
         ov, day = overrides or Overrides(), pd.Timestamp(date).normalize()
+        plain = not ov.applied() and dish_ids is None and n_samples == C.N_SAMPLES
+        if plain:
+            with self._cache_lock:
+                hit = self._cache.get((day, meal_slot))
+            if hit is not None:
+                return copy.deepcopy(hit)
+        out = self._forecast(day, meal_slot, dish_ids, ov, n_samples)
+        if plain:
+            with self._cache_lock:
+                if len(self._cache) >= CACHE_SIZE:
+                    self._cache.pop(next(iter(self._cache)))
+                self._cache[(day, meal_slot)] = copy.deepcopy(out)
+        return out
+
+    def _forecast(self, day: pd.Timestamp, meal_slot: str, dish_ids: list[str] | None, ov: Overrides, n_samples: int) -> dict:
+        """The forecast itself (see forecast)."""
         targets = menu_rows_for(pd.DatetimeIndex([day]), self.menu)
         targets = targets[targets["meal_slot"] == meal_slot].reset_index(drop=True)
         if dish_ids is not None:

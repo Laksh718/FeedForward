@@ -9,6 +9,13 @@ artifacts/models/*
 !artifacts/models/final/
 !artifacts/processed/
 !artifacts/timeseries/
+# the trained rare event GAN (about 170 KB), so the server can generate rare event plans without training it
+!artifacts/gan/
+artifacts/gan/*
+!artifacts/gan/generator.pt
+!artifacts/gan/scaler.joblib
+!artifacts/gan/columns.json
+!artifacts/gan/training_summary.json
 data_store/admin_logs/*
 !data_store/admin_logs/.gitkeep
 __pycache__/

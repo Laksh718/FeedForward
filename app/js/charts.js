@@ -84,7 +84,7 @@ export function chartService(week, selected) {
     `${examShade(days, x, step, mt, ph, th, H - 10)}${grid}${guide(mt, ph)}<path class="fade" d="${band}" fill="url(#ffBandS)"/>${usual}${likely}${dots}${dayLabels(days, x, H - mb + 24, selected, th)}${hits}</svg>`;
 }
 
-// Forecast desk: past week (grey) | divider | forecast band, most likely (ink), recommended (rust).
+// Forecast view: past week (grey) | divider | forecast band, most likely (ink), recommended (rust).
 export function chartDesk(week, selected) {
   const th = THEMES.desk, days = week.days, N = 14;
   const W = 880, H = 380, ml = 62, mr = 14, mt = 34, mb = 62;

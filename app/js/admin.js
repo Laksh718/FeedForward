@@ -1,9 +1,10 @@
-// Daily log (admin): PIN, then a form in five sections, recent entries, CSV export and forecast versus actual.
+// Daily log (admin): PIN, then the automation switches, a form in five sections (it can fill itself from the approved
+// plans), recent entries, CSV import and export, and forecast versus actual. Every save reloads the other views.
 import { REMOTE, STATIC, api, auth } from "./api.js";
 import { liquid } from "./fx.js";
 import { icon } from "./icons.js";
-import { refresh, state } from "./state.js";
-import { SLOTS, WEATHER_TYPES, cap, esc, fmt } from "./util.js";
+import { notify, state, subscribe, synced } from "./state.js";
+import { SLOTS, WEATHER_TYPES, cap, esc, fmt, whenText } from "./util.js";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const TABLES = ["day_context", "attendance", "kitchen_log", "ingredient_usage"];
@@ -31,6 +32,21 @@ const SKELETON = `
       <button class="btn btn-primary" type="submit">Unlock</button></form><div id="ad-gate-msg"></div></section>
   <div id="ad-app" hidden>
     <div class="ad-stats" id="ad-stats"></div>
+    <section class="ad-card glass ad-auto" aria-labelledby="ad-auto-t"><h2 id="ad-auto-t">${icon("auto")}Automation</h2>
+      <p class="ad-help">Let FeedForward keep things moving on its own. Both switches are off until you turn them on. The server checks every few
+        minutes and does whatever is switched on; Run now does it at once.</p>
+      <div class="ad-auto-grid">
+        <label class="ad-switch"><input type="checkbox" id="ad-auto-approve"><span><strong>Approve plans automatically</strong>
+          <small>Plans nobody has looked at are approved with the recommended quantities. A plan a person sent back is never approved automatically.</small></span></label>
+        <div class="ad-field ad-days"><label for="ad-auto-days">Days ahead, from today</label><input id="ad-auto-days" type="number" min="1" max="14" value="7"></div>
+        <label class="ad-switch"><input type="checkbox" id="ad-auto-log"><span><strong>Fill the Daily log from approved plans</strong>
+          <small>Once a day has passed, a day with approved plans and no entry is filled from them (prepared = approved, eaten = most likely).
+          It is marked as filled automatically; the model learns from it only after a person checks and saves it.</small></span></label>
+      </div>
+      <div class="ad-actions"><button class="btn btn-primary" type="button" id="ad-auto-save">${icon("check")}Save the switches</button>
+        <button class="btn" type="button" id="ad-auto-run">${icon("auto")}Run now</button></div>
+      <div id="ad-auto-msg" aria-live="polite"></div></section>
+    <div id="ad-autonote" class="ad-note" hidden></div>
     <section class="ad-card glass" aria-labelledby="ad-s1"><h2 id="ad-s1">1. Day context</h2>
       <p class="ad-help">Past dates can be filled in later. Future dates take expected weather and special day information only.</p>
       <div class="ad-grid">
@@ -58,9 +74,10 @@ const SKELETON = `
         <div class="ad-field"><label for="ad-present">Students on campus (optional)</label><input id="ad-present" type="number" min="0" max="4000"></div></div></section>
     <section class="ad-card glass" aria-labelledby="ad-s3"><h2 id="ad-s3">3. Dishes and quantities</h2><p class="ad-help">${WHY}</p>
       <div class="seg ad-pills" role="group" aria-label="Meal slot">${SLOTS.map((s) => `<button type="button" data-slot="${s}" aria-pressed="false">${cap(s)}</button>`).join("")}</div>
-      <div class="ad-tablewrap"><table><thead><tr><th>Dish</th><th>Prepared</th><th>Top up</th><th>Eaten</th><th>Left over</th><th>Ran out early</th><th>Not served</th></tr></thead><tbody id="ad-rows"></tbody></table></div>
+      <div class="ad-tablewrap"><table><thead><tr><th>Dish</th><th>Prepared</th><th>Top up</th><th>Eaten</th><th>Left over</th><th>Ran out early</th><th>Not served</th><th><span class="sr-only">Remove</span></th></tr></thead><tbody id="ad-rows"></tbody></table></div>
       <div class="ad-actions"><label class="sr-only" for="ad-add">Add a dish not on the menu</label><select id="ad-add" class="ad-add-select"><option value="">Add a dish not on the menu</option></select>
-        <button class="btn btn-small" id="ad-add-btn" type="button">Add dish</button></div></section>
+        <button class="btn btn-small" id="ad-add-btn" type="button">Add dish</button>
+        <button class="btn btn-small" id="ad-plan-fill" type="button">${icon("plans")}Fill the whole day from the approved plans</button></div></section>
     <section class="ad-card glass" aria-labelledby="ad-s4"><h2 id="ad-s4">4. Ingredients used</h2><p class="ad-help">Kilograms used in the day. Pick from the ingredient list, or type a new one.</p>
       <div class="ad-tablewrap"><table><thead><tr><th>Ingredient</th><th>Used (kg)</th><th><span class="sr-only">Remove</span></th></tr></thead><tbody id="ad-ing"></tbody></table></div>
       <datalist id="ad-ing-list"></datalist>
@@ -121,6 +138,7 @@ export function mountAdmin(root) {
       $("#ad-date").value = S.today;
       await loadDay(S.today);
       refreshSide();
+      loadAutomation();
     } catch (e) {
       auth.pin = "";
       $("#ad-gate").hidden = false;
@@ -159,6 +177,10 @@ export function mountAdmin(root) {
     $("#ad-wd").value = m.weekday;
     $("#ad-future").hidden = date <= S.today;
     $("#ad-past").hidden = date > S.today;
+    const auto = TABLES.some((t) => sv[t].some((r) => r.data_source === "auto_filled"));
+    $("#ad-autonote").hidden = !auto;
+    $("#ad-autonote").innerHTML = auto ? `${icon("auto")}<span><strong>This day was filled automatically from its approved plans.</strong> Check the numbers below and change
+      what was different, then press Save day. Until a person saves it, the model does not learn from this day.</span>` : "";
     toggles();
     renderRows();
     renderIng();
@@ -184,10 +206,17 @@ export function mountAdmin(root) {
     const rows = S.rows[S.slot] || {};
     const cell = (id, key, extra = "") => `<td><input type="number" min="0" data-dish="${id}" data-k="${key}" value="${rows[id][key] ?? ""}" ${extra} aria-label="${esc(rows[id].name)}: ${key}"></td>`;
     $("#ad-rows").innerHTML = Object.keys(rows).map((id) => `<tr><td>${esc(rows[id].name)}</td>${cell(id, "prepared")}${cell(id, "topup")}${cell(id, "eaten")}${cell(id, "left")}
-      <td><input type="checkbox" data-dish="${id}" data-k="ran" ${rows[id].ran ? "checked" : ""} aria-label="${esc(rows[id].name)}: ran out early"></td>${cell(id, "unmet", rows[id].ran ? "" : "disabled")}</tr>`).join("")
-      || `<tr><td colspan="7" class="ad-help">No dishes on the menu for this slot on this day. Add one below.</td></tr>`;
+      <td><input type="checkbox" data-dish="${id}" data-k="ran" ${rows[id].ran ? "checked" : ""} aria-label="${esc(rows[id].name)}: ran out early"></td>${cell(id, "unmet", rows[id].ran ? "" : "disabled")}
+      <td><button class="btn btn-small" type="button" data-rm-dish="${id}" aria-label="Remove ${esc(rows[id].name)}">${icon("trash")}</button></td></tr>`).join("")
+      || `<tr><td colspan="8" class="ad-help">No dishes on the menu for this slot on this day. Add one below.</td></tr>`;
   }
   root.querySelectorAll("[data-slot]").forEach((b) => b.addEventListener("click", () => { S.slot = b.dataset.slot; renderRows(); }));
+  $("#ad-rows").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-rm-dish]");
+    if (!b) return;
+    delete S.rows[S.slot][b.dataset.rmDish];   // not saved until Save day; saving then replaces the day without it
+    renderRows();
+  });
   $("#ad-rows").addEventListener("input", (e) => {
     const t = e.target, row = S.rows[S.slot][t.dataset.dish];
     if (!row) return;
@@ -217,6 +246,25 @@ export function mountAdmin(root) {
       S.ing = (await api.post("/admin/fill-recipes", { rows })).ingredients;
       renderIng();
       showMsg(`Filled ${S.ing.length} ingredients from the recipes. The numbers are estimates, so edit them to match what was really used.`, "ok");
+    } catch (e) { showMsg(errText(e), "bad"); }
+  });
+
+  // ---------- fill the form from the approved plans of the date (nothing is saved until Save day)
+  $("#ad-plan-fill").addEventListener("click", async () => {
+    try {
+      const r = await api.get("/admin/plan-fill", { date: $("#ad-date").value });
+      if (!r.entry) { showMsg(esc(r.message), "warn"); return; }
+      SLOTS.forEach((s) => { if (r.slots.includes(s)) S.rows[s] = {}; });
+      r.entry.kitchen.forEach((k) => {
+        const name = S.catalogue.find((d) => d.dish_id === k.dish_id)?.dish_name ?? k.dish_id;
+        S.rows[k.meal_slot][k.dish_id] = { name, prepared: k.prepared_qty, topup: "", eaten: k.consumed_qty, left: k.leftover_qty,
+          ran: k.ran_out_early, unmet: k.unmet_qty || "" };
+      });
+      r.entry.attendance.forEach((a) => { $(`#ad-att-${a.meal_slot}`).value = a.attendance; });
+      S.ing = r.entry.ingredients.map((i) => ({ ingredient: i.ingredient, used_kg: i.used_kg }));
+      renderRows();
+      renderIng();
+      showMsg(`${esc(r.message)} Approved meals: ${r.slots.map(cap).join(", ")}.`, "ok");
     } catch (e) { showMsg(errText(e), "bad"); }
   });
 
@@ -258,7 +306,7 @@ export function mountAdmin(root) {
     try {
       const r = await api.post("/admin/day", payload());
       const c = r.saved;
-      refresh();   // the other views use the new day at once
+      synced();   // the other views use the new day at once
       if (mine !== msgTurn) { refreshSide(); return; }
       $("#ad-msg").innerHTML = `<div class="ad-msg ok" role="status"><strong>Saved ${esc($("#ad-date").value)}.</strong> ${c.day_context} day context, ${c.attendance} attendance, ${c.kitchen_log} dish rows and ${c.ingredient_usage} ingredient rows. Forecasts now use this day.</div>${warnHtml(r.warnings)}`;
       refreshSide();
@@ -305,9 +353,41 @@ export function mountAdmin(root) {
       const errs = r.row_errors.length ? `<div class="ad-msg ${r.dates_saved ? "warn" : "bad"}"><strong>${r.row_errors.length} row(s) could not be used</strong>
         ${list(r.row_errors.map((e) => (e.row ? `Row ${e.row}: ${e.message}` : e.message)))}</div>` : "";
       msg.innerHTML = `<div class="ad-msg ${r.dates_saved ? "ok" : "warn"}"><strong>${r.message}</strong>${r.dates.length ? ` Dates: ${r.dates.join(", ")}.` : ""}</div>${errs}${warnHtml(r.warnings)}`;
-      if (r.dates_saved) { refresh(); refreshSide(); if (r.dates.includes($("#ad-date").value)) loadDay($("#ad-date").value); }
+      if (r.dates_saved) { synced(); refreshSide(); if (r.dates.includes($("#ad-date").value)) loadDay($("#ad-date").value); }
     } catch (e) { msg.innerHTML = `<div class="ad-msg bad">${errText(e)}</div>`; }
   });
+
+  // ---------- automation switches
+  const autoMsg = (html, kind) => { $("#ad-auto-msg").innerHTML = html ? `<div class="ad-msg ${kind}">${html}</div>` : ""; };
+  function showAutomation(a) {
+    $("#ad-auto-approve").checked = a.auto_approve;
+    $("#ad-auto-log").checked = a.auto_log;
+    $("#ad-auto-days").value = a.days_ahead;
+    $("#ad-auto-days").max = a.max_days_ahead ?? 14;
+    const last = a.last_run ? `Last run that did something: ${esc(whenText(a.last_run.at))}, ${a.last_run.approved_count} plan(s) approved, ${a.last_run.logged_dates.length} day(s) filled.` : "Nothing has been done automatically yet.";
+    $("#ad-auto-t").innerHTML = `${icon("auto")}Automation <span class="status-pill ${a.auto_approve || a.auto_log ? "approve" : "pending"}">${a.auto_approve || a.auto_log ? "On" : "Off"}</span>`;
+    if (!$("#ad-auto-msg").innerHTML) autoMsg(last, "");
+  }
+  async function loadAutomation() {
+    try { showAutomation(await api.get("/admin/automation")); } catch (e) { autoMsg(errText(e), "bad"); }
+  }
+  async function automation(path, body) {
+    try {
+      autoMsg("Working&hellip;", "");
+      const r = await api.post(path, body);
+      $("#ad-auto-msg").innerHTML = "";
+      showAutomation(r.settings);
+      autoMsg(esc(r.message), "ok");
+      notify(r.message, "ok");
+      await synced();
+      refreshSide();
+      if (r.result.logged_dates.includes($("#ad-date").value)) loadDay($("#ad-date").value);
+    } catch (e) { autoMsg(errText(e), "bad"); }
+  }
+  $("#ad-auto-save").addEventListener("click", () => automation("/admin/automation", {
+    auto_approve: $("#ad-auto-approve").checked, auto_log: $("#ad-auto-log").checked,
+    days_ahead: Math.max(1, Math.min(14, Number($("#ad-auto-days").value) || 7)) }));
+  $("#ad-auto-run").addEventListener("click", () => automation("/admin/automation/run", {}));
 
   // ---------- stats strip
   async function refreshStats() {
@@ -329,15 +409,15 @@ export function mountAdmin(root) {
     refreshStats();
     try {
       const { days } = await api.get("/admin/recent");
-      $("#ad-recent").innerHTML = days.map((d) => `<tr><td>${esc(d.date)} ${esc(d.weekday.slice(0, 3))}</td><td>${d.day_context}</td><td>${d.attendance}</td><td>${d.kitchen_log}</td><td>${d.ingredient_usage}</td>
+      $("#ad-recent").innerHTML = days.map((d) => `<tr><td>${esc(d.date)} ${esc(d.weekday.slice(0, 3))}${d.auto_filled ? ` <span class="pl-chip auto">${icon("auto")}Filled automatically</span>` : ""}</td><td>${d.day_context}</td><td>${d.attendance}</td><td>${d.kitchen_log}</td><td>${d.ingredient_usage}</td>
         <td>${esc(d.entered_at.replace("T", " "))}</td><td><button class="btn btn-small" data-edit="${d.date}" type="button">Edit</button> <button class="btn btn-small" data-del="${d.date}" type="button">Delete</button></td></tr>`).join("")
         || `<tr><td colspan="7" class="ad-help">Nothing saved yet. Save a day above and it appears here.</td></tr>`;
       const cmp = await api.get("/admin/forecast-vs-actual");
       $("#ad-cmp").innerHTML = cmp.summary ? `<p class="ad-help">${cmp.summary.rows} dishes compared. ${cmp.summary.inside_range_pct} percent landed inside the likely range. Average miss of the most likely amount: ${fmt(cmp.summary.mean_abs_error_most_likely)} portions, of the usual plan: ${fmt(cmp.summary.mean_abs_error_usual_plan)}.</p>
-        <div class="ad-tablewrap"><table><thead><tr><th>Date</th><th>Slot</th><th>Dish</th><th>Likely range</th><th>Most likely</th><th>Usual plan</th><th>Cooked or approved</th><th>Actual wanted</th><th>Result</th></tr></thead><tbody>${cmp.rows.map((r) =>
-          `<tr><td>${esc(r.date)}</td><td>${esc(r.meal_slot)}</td><td>${esc(r.dish_id)}</td><td>${fmt(r.p10)} to ${fmt(r.p90)}</td><td>${fmt(r.p50)}</td><td>${fmt(r.usual_plan)}</td><td>${fmt(r.recommended)}</td><td>${fmt(r.actual_demand)}</td>
+        <div class="ad-tablewrap"><table><thead><tr><th>Date</th><th>Slot</th><th>Dish</th><th>Likely range</th><th>Most likely</th><th>Usual plan</th><th>Approved</th><th>Actual wanted</th><th>Result</th></tr></thead><tbody>${cmp.rows.map((r) =>
+          `<tr><td>${esc(r.date)}</td><td>${esc(r.meal_slot)}</td><td>${esc(r.dish_id)}</td><td>${fmt(r.p10)} to ${fmt(r.p90)}</td><td>${fmt(r.p50)}</td><td>${fmt(r.usual_plan)}</td><td>${fmt(r.approved_qty ?? r.recommended)}</td><td>${fmt(r.actual_demand)}</td>
           <td class="${r.inside_range ? "ad-inside" : "ad-outside"}">${r.inside_range ? "Inside range" : "Outside range"}</td></tr>`).join("")}</tbody></table></div>`
-        : `<p class="ad-help">No approved forecast has logged actuals yet. Approve a plan on the Service board, then log what happened on that day here.</p>`;
+        : `<p class="ad-help">No approved plan has actuals logged by a person yet. Approve a plan (Service board or Plans), then log what happened on that day here. Days filled automatically count once a person has checked and saved them.</p>`;
     } catch (e) { $("#ad-cmp").innerHTML = `<div class="ad-msg bad">${errText(e)}</div>`; }
   }
   $("#ad-recent").addEventListener("click", async (e) => {
@@ -346,7 +426,7 @@ export function mountAdmin(root) {
     if (t.dataset.del && confirm(`Delete everything saved for ${t.dataset.del}? The rows stay in the file marked as deleted, and forecasts ignore them.`)) {
       for (const table of TABLES) await api.del("/admin/entry", { table, date: t.dataset.del });
       showMsg(`Deleted the entries of ${esc(t.dataset.del)}.`, "ok");
-      refresh();
+      synced();
       if ($("#ad-date").value === t.dataset.del) await loadDay(t.dataset.del);
       refreshSide();
     }
@@ -359,6 +439,14 @@ export function mountAdmin(root) {
       URL.revokeObjectURL(a.href);
     } catch (e) { showMsg(errText(e), "bad"); }
   }));
+
+  // a decision or an automatic run elsewhere: refresh the lists (the form being typed in is left alone)
+  let lastVersion = state.dataVersion;
+  subscribe((s) => {
+    if (s.dataVersion === lastVersion) return;
+    lastVersion = s.dataVersion;
+    if (auth.pin && !$("#ad-app").hidden) { refreshSide(); loadAutomation(); }
+  });
 
   if (STATIC && !REMOTE) {   // snapshot only: entries are saved to the server's files, so there is nothing to unlock
     $("#ad-gate-t").textContent = "Needs the FeedForward server";

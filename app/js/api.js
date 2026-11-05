@@ -52,7 +52,8 @@ const REMOTE_DOWN = ["Could not reach the FeedForward server.",
 // The server is unreachable or failing (as opposed to answering "no" to a valid request).
 const serverDown = (e) => e.status === 0 || e.status >= 500;
 // Calls that should reach the server whenever it is up: answers there are live and saved for everyone.
-const serverFirst = (method, path) => path === "/chat" || path === "/review" || path.startsWith("/admin");
+const serverFirst = (method, path) => ["/chat", "/review", "/plans/review", "/events/approve"].includes(path)
+  || path.startsWith("/admin") || path.startsWith("/activity");
 
 async function staticWithServer(path, options, asText) {
   const url = new URL(path, "https://feedforward.invalid");
