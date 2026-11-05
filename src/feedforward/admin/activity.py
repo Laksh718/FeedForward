@@ -1,4 +1,4 @@
-"""What happened lately, newest first: plan decisions, Daily log saves and automatic runs, for every page to show.
+"""What happened lately, newest first: plan decisions, Daily log saves, automatic runs and donations, for every page.
 
 version() changes whenever anything in the admin log folder is written, so an open dashboard can ask for it every
 few seconds and reload only when something really changed (a review from another tab, an automatic run, a save).
@@ -39,6 +39,8 @@ def recent(limit: int = 20, store: LogStore | None = None) -> dict:
     events = [{"kind": e["decision"], **{k: e[k] for k in ("at", "date", "meal_slot", "reviewer", "note", "automatic")}}
               for e in review_log.review_events(limit)]
     events += log_events(store, limit)
+    from feedforward.community import donations
+    events += donations.events(limit)
     run = automation.load_settings().get("last_run")
     if run:
         events.append({"kind": "automation", "at": run["at"], "approved_count": run.get("approved_count", 0),

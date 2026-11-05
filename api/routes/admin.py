@@ -24,8 +24,14 @@ from feedforward.models import week_view
 from feedforward.models.forecast_service import ForecastService
 
 
-def require_pin(x_admin_pin: str | None = Header(None)) -> None:
-    """The admin PIN comes from ADMIN_PIN in .env and is sent in the X-Admin-Pin header."""
+def require_pin(x_admin_pin: str | None = Header(None), authorization: str | None = Header(None)) -> None:
+    """The admin PIN comes from ADMIN_PIN in .env and is sent in the X-Admin-Pin header. A signed in kitchen account
+    (Authorization: Bearer <token>) is let in without the PIN."""
+    from feedforward.community.accounts import user_for
+    if authorization and authorization.lower().startswith("bearer "):
+        user = user_for(authorization[7:].strip())
+        if user and user["role"] == "kitchen":
+            return
     pin = os.getenv("ADMIN_PIN", "").strip()
     if not pin or pin == "change-me":
         raise error(503, "The admin PIN is not set.", "Set ADMIN_PIN in the .env file (not the placeholder), then restart the server.")

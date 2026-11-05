@@ -61,11 +61,21 @@ def _dish_keys() -> dict[str, str]:
     return dish_catalogue(pd.read_parquet(C.PROCESSED_DIR / "dishes.parquet"))
 
 
+def _documents(question: str) -> list[dict]:
+    """Passages of the kitchen's uploaded documents that match the question (none when nothing is uploaded)."""
+    try:
+        from feedforward.community.knowledge import search
+        return search(question, k=2, min_score=0.1)
+    except Exception:  # noqa: BLE001  (documents are extra: a broken index must never stop an answer)
+        return []
+
+
 def _result(answer: str, source: str, u: Understanding, ctx: dict | None, reason: str = "") -> dict:
     if u.extra_questions:
         answer += "\n(I answered your first question. Please ask the next one separately.)"
+    docs = (ctx or {}).get("kitchen_documents", [])
     return {"answer": answer, "source": source, "intent": u.intent, "fallback_reason": reason,
-            "entities": u.entities, "context": ctx}
+            "entities": u.entities, "context": ctx, "documents": docs}
 
 
 def answer_question(question: str, svc: ForecastService, page_date: Date, page_slot: str, scope: str,
@@ -78,7 +88,14 @@ def answer_question(question: str, svc: ForecastService, page_date: Date, page_s
         return _result(f"I only have calendar information from {first} to {last}. Ask about a day in that period.", "rules", u, None)
     ctx = build_context(u, svc, page_date, page_slot, scope, page_overrides, today)
     if u.intent == "out_of_scope":
+        found = _documents(question) if u.reason in ("off_topic", "unclear_change") else []
+        if found:   # not about the forecast, but the kitchen's documents answer it: quote them
+            ctx = dict(ctx or {}, kitchen_documents=[{"source": f"{p['title']}, page {p['page']}", "text": p["text"][:600]} for p in found])
+            return _result(f"From your documents ({found[0]['title']}, page {found[0]['page']}): {found[0]['text'][:600]}", "documents", u, ctx)
         return _result(MESSAGES[u.reason], "rules", u, ctx)
+    passages = _documents(question)
+    if passages:   # the kitchen's own documents that match: the model may follow and quote them, and the page shows them
+        ctx["kitchen_documents"] = [{"source": f"{p['title']}, page {p['page']}", "text": p["text"][:600]} for p in passages]
     fallback = template_answer(ctx)
     if not use_llm:
         return _result(fallback, "template", u, ctx, "language model switched off")
