@@ -82,6 +82,15 @@ const SKELETON = `
   </div>`;
 
 const RAIN = ["Dry", "Light rain", "Rain", "Heavy rain"];
+// Where the day's weather came from: the dataset, Open-Meteo (observed or forecast), the admin, or last year's average.
+const WEATHER_TAG = { observed: " (observed)", forecast: " (forecast)", entered: " (entered)", assumed: " (assumed)" };
+const WEATHER_TITLE = {
+  recorded: "Recorded weather from the dataset",
+  observed: "Recorded weather from Open-Meteo, refreshed every hour",
+  forecast: "Live forecast from Open-Meteo, refreshed every hour",
+  entered: "Entered in the Daily log",
+  assumed: "Last year's monthly average: no live forecast reaches this far ahead",
+};
 const DIET_LABEL = { veg: "Veg", nonveg: "Non-veg", egg: "Egg" };
 const CATEGORY_LABEL = (c) => c.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 const setText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
@@ -134,7 +143,11 @@ function kpis(p, s) {
 function facts(p) {
   const f = p.day_facts || {}, out = [];
   if (f.temp_max_c != null) out.push(["thermo", `${Math.round(f.temp_max_c)}&deg; / ${Math.round(f.temp_min_c)}&deg;C`]);
-  if (f.rain_level != null) out.push([f.rain_level > 0 ? "rain" : "sun", `${RAIN[f.rain_level] ?? "Rain"}${f.weather_is_assumed ? " (assumed)" : ""}`]);
+  if (f.rain_level != null) {
+    const src = f.weather_source || (f.weather_is_assumed ? "assumed" : "recorded");
+    const label = src === "assumed" ? (RAIN[f.rain_level] ?? "Rain") : (f.weather_condition || RAIN[f.rain_level] || "Rain");
+    out.push([f.rain_level > 0 ? "rain" : "sun", `<span title="${esc(WEATHER_TITLE[src] || "")}">${esc(label)}${WEATHER_TAG[src] || ""}</span>`]);
+  }
   if (f.exam_week) out.push(["book", "Exam week"]); else if (f.formative_test) out.push(["book", "Test week"]);
   if (f.holiday) out.push(["star", "Holiday"]);
   if (f.festival) out.push(["star", "Festival"]);

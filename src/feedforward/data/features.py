@@ -12,6 +12,7 @@ from feedforward.admin.context import overlay_calendar, overlay_weather
 from feedforward.data.calendar_future import assumed_weather
 from feedforward.data.feature_registry import LAGS, MEAL_SLOTS, PHASE_GROUPS
 from feedforward.data.feature_registry import TEXT_DIM as _TEXT_DIM
+from feedforward.data.live_weather import weather_rows as live_weather_rows
 from feedforward.data.weather_types import WEATHER_TYPE_RAIN_LEVEL  # noqa: F401  (also imported from here by other modules)
 
 CAP_DAYS = 60
@@ -40,15 +41,23 @@ def full_calendar() -> pd.DataFrame:
 
 
 def full_weather(dates: pd.DatetimeIndex) -> pd.DataFrame:
-    """Weather for every requested date: real where known, last year's monthly average otherwise."""
+    """Weather for every requested date: the dataset where it has the day, then live Open-Meteo data
+    (recorded days and the 16 day forecast), and last year's monthly average (assumed) for anything later."""
     real = pd.read_parquet(C.PROCESSED_DIR / "weather.parquet")
-    real = real.assign(weather_assumed=0)
+    real = real.assign(weather_assumed=0, weather_source="recorded", weather_condition=real["condition"])
     known = real[real["date"].isin(dates)]
     missing = dates.difference(pd.DatetimeIndex(known["date"]))
     parts = [known]
     if len(missing):
-        parts.append(assumed_weather(pd.DatetimeIndex(missing), real))
-    cols = ["date", "temp_max_c", "temp_min_c", "temp_mean_c", "rain_level", "weather_reliable", "weather_assumed"]
+        live = live_weather_rows(pd.DatetimeIndex(missing))
+        if len(live):
+            parts.append(live)
+            missing = missing.difference(pd.DatetimeIndex(live["date"]))
+    if len(missing):
+        parts.append(assumed_weather(pd.DatetimeIndex(missing), real).assign(
+            weather_source="assumed", weather_condition=None))
+    cols = ["date", "temp_max_c", "temp_min_c", "temp_mean_c", "rain_level", "weather_reliable", "weather_assumed",
+            "weather_source", "weather_condition"]
     out = pd.concat(parts)[cols].sort_values("date").reset_index(drop=True)
     return overlay_weather(out)  # temperatures and weather types entered by the admin
 

@@ -16,7 +16,9 @@ demand forecaster, the dashboard and copilot, and the admin Daily log that feeds
 - The weather rows for February 2026 are unverified copies of March (`weather_reliable = 0`). One day (2026-05-23) is a flagged temperature outlier.
   Rainfall in millimetres is always 0 in the source and is not used.
 - 79 theory exam days are estimates (`phase_confidence = estimated`). Dates after 2026-10-05 come from `data_store/calendar_future.csv`
-  (probable or estimated), and future weather is last year's monthly average, always flagged as assumed.
+  (probable or estimated). Weather after the history is real: [Open-Meteo](https://open-meteo.com/) (free, no key) for Kattankulathur,
+  recorded days up to today and a 16 day forecast, refreshed hourly (`src/feedforward/data/live_weather.py`). Only dates beyond the
+  forecast fall back to last year's monthly average, flagged as assumed.
 - One year of history: no season repeats, so every score is an estimate. The simulation itself is noisy, which puts a measured ceiling of
   about 95 percent accuracy per dish. See `reports/metrics_summary.md`.
 
@@ -98,7 +100,8 @@ uvicorn api.main:app --reload
 ```
 
 `.env` keys: `GEMINI_API_KEY` and `GEMINI_MODEL` (default `gemini-3.1-flash-lite`; key from [Google AI Studio](https://aistudio.google.com/apikey))
-for the copilot's language model, one request per answer. Without a key the copilot uses standard wording. `ADMIN_PIN` is needed for the Daily log. Secrets stay in `.env`; it is never committed.
+for the copilot's language model, one request per answer. Without a key the copilot uses standard wording. `ADMIN_PIN` is needed for the Daily log. `FEEDFORWARD_LIVE_WEATHER=0` switches the live weather off
+(the tests do this). Secrets stay in `.env`; it is never committed.
 
 ## How to run each part (from the project folder, venv active)
 
