@@ -1,16 +1,21 @@
 // Entry point: the shell (logo, view tabs, demo notice, toasts), the view switch, mounting and first load.
 import { mountAdmin } from "./admin.js";
 import { mountCalendar } from "./calendar.js";
-import { mountDesk } from "./desk.js";
+import { mountCopilot } from "./copilot.js";
+import { mountEvents } from "./events.js";
+import { mountForecast } from "./forecast.js";
 import { initGlow, liquid, toast } from "./fx.js";
 import { icon } from "./icons.js";
 import { mountLanding } from "./landing.js";
 import { logoMark } from "./logo.js";
+import { mountPlans } from "./plans.js";
 import { mountService } from "./service.js";
 import { init, subscribe } from "./state.js";
 
-const VIEWS = ["landing", "service", "desk", "calendar", "admin"];
-const TITLES = { desk: "FeedForward, forecast desk", admin: "FeedForward, daily log", calendar: "FeedForward, calendar",
+const VIEWS = ["landing", "service", "forecast", "plans", "events", "copilot", "calendar", "admin"];
+const ALIASES = { desk: "forecast" };   // older links
+const TITLES = { forecast: "FeedForward, forecast", plans: "FeedForward, plans", events: "FeedForward, rare events",
+  copilot: "FeedForward, copilot", admin: "FeedForward, daily log", calendar: "FeedForward, calendar",
   service: "FeedForward, service board", landing: "FeedForward, predict. prevent. provide." };
 
 // ---------- shell: logo, tab icons, the liquid pill under the tabs
@@ -22,7 +27,8 @@ liquid(tablist);
 
 let current = null;
 function showView(name) {
-  const view = VIEWS.includes(name) ? name : "landing";
+  const asked = ALIASES[name] ?? name;
+  const view = VIEWS.includes(asked) ? asked : "landing";
   const changed = view !== current;
   current = view;
   document.body.dataset.view = view;
@@ -37,7 +43,10 @@ function showView(name) {
     b.tabIndex = on ? 0 : -1;
   });
   document.title = TITLES[view];
-  if (changed) window.scrollTo({ top: 0, behavior: "instant" });
+  if (changed) {
+    window.scrollTo({ top: 0, behavior: "instant" });
+    window.dispatchEvent(new CustomEvent("ff:view", { detail: view }));   // views that load on first show listen
+  }
 }
 
 tabs.forEach((b) => b.addEventListener("click", () => { location.hash = b.dataset.viewTab; }));
@@ -64,12 +73,15 @@ window.addEventListener("scroll", () => {
 // ---------- views
 mountLanding(document.getElementById("view-landing"));
 mountService(document.getElementById("view-service"));
-mountDesk(document.getElementById("view-desk"));
+mountForecast(document.getElementById("view-forecast"));
+mountPlans(document.getElementById("view-plans"));
+mountEvents(document.getElementById("view-events"));
+mountCopilot(document.getElementById("view-copilot"));
 mountCalendar(document.getElementById("view-calendar"));
 mountAdmin(document.getElementById("view-admin"));
 initGlow();
 
-// Approve and Send back confirmations also pop up as a toast, whichever view they came from.
+// Every confirmation (a decision, a save, an automatic run) pops up as a toast, whichever view it came from.
 let lastNotice = 0;
 subscribe((s) => {
   if (!s.noticeAt || s.noticeAt === lastNotice) return;

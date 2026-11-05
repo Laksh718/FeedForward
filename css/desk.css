@@ -1,7 +1,6 @@
-/* View: Forecast desk. A floating glass rail of sections next to glass cards: chart, table, what if, risk,
-   approvals and a question box. */
-#view-desk { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 22px; align-items: start; }
-#view-desk h1, #view-desk h2 { font-family: var(--display); }
+/* Shared glass cards, dish tables, risk groups and the week chart frame, used by the Forecast, Rare events and
+   Plans views (the old Forecast desk). View specific layout lives in pages.css. */
+#view-forecast h1, #view-forecast h2 { font-family: var(--display); }
 
 .dk-rail { position: sticky; top: 96px; display: flex; flex-direction: column; gap: 22px; padding: 18px 12px 16px; border-radius: var(--r-xl);
   max-height: calc(100vh - 112px); overflow-y: auto; scrollbar-width: none; }
@@ -47,7 +46,7 @@
 .dishpick button:hover { background: #fff; color: var(--ink); }
 .dishpick button:active { transform: scale(.96); }
 .dishpick button[aria-pressed="true"] { color: #fff; background: var(--ink); border-color: var(--ink); font-weight: 600; box-shadow: 0 8px 18px -10px rgba(13, 42, 30, .6); }
-#view-desk .dishpick select { border-radius: 999px; min-width: 170px; }
+#view-forecast .dishpick select { border-radius: 999px; min-width: 170px; }
 
 .tablewrap { overflow-x: auto; border-radius: var(--r); }
 table.dishes { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 15px; min-width: 640px; }
@@ -104,7 +103,6 @@ table.dishes { width: 100%; border-collapse: separate; border-spacing: 0; font-s
 .wi-result { margin-top: 16px; font-size: 15.5px; line-height: 1.5; }
 
 @media (max-width: 1000px) {
-  #view-desk { grid-template-columns: minmax(0, 1fr); }
   .dk-rail { position: static; max-height: none; padding: 14px; gap: 12px; }
   .dk-nav { flex-direction: row; flex-wrap: wrap; }
   .dk-rail-foot { margin-top: 0; }
@@ -113,8 +111,8 @@ table.dishes { width: 100%; border-collapse: separate; border-spacing: 0; font-s
   .dk-actions { justify-content: flex-start; }
 }
 @media (max-width: 640px) {
-  #view-desk .chart { overflow-x: auto; }
-  #view-desk .chart svg { min-width: 600px; }
+  #view-forecast .chart { overflow-x: auto; }
+  #view-forecast .chart svg { min-width: 600px; }
   .dk-card, .dk-ask, .dk-top { padding: 18px 16px; }
   .dk-nav button { padding: 0 12px; font-size: 14px; }
   .ask-form { flex-wrap: wrap; }

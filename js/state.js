@@ -1,11 +1,18 @@
-// One shared store for both views. Views read `state` and call the actions below.
-import { api, ApiError } from "./api.js";
+// One shared store for every view. Views read `state` and call the actions below.
+//
+// Everything that changes saved data (a decision, a Daily log save, an automatic run) ends with `synced()`: it reloads
+// the open plan, the plans of the coming days and the activity feed, and bumps `state.dataVersion`, so every view
+// that keeps its own data (Forecast, Plans, Rare events, Calendar, Daily log) reloads it too. The server is also asked
+// every few seconds whether anything was saved elsewhere (another tab, another person, the automation).
+import { api, ApiError, REMOTE, STATIC } from "./api.js";
 
 export const state = {
   health: null, slot: "lunch", date: null, weekStart: null, scope: "core", dishId: null,
   overrides: {}, plan: null, whatif: null, week: null, weekDish: null, menu: [],
   editing: false, adjusted: {}, loading: true, error: null, notice: "", noticeAt: 0, noticeKind: "ok",
   chat: [], chatBusy: false,
+  plans: null, activity: [], dataVersion: 0, serverVersion: null,
+  eventPreset: null,             // set by the Calendar or Home before opening Rare events: {date, event}
 };
 
 const listeners = new Set();
@@ -15,6 +22,13 @@ export function subscribe(fn) { listeners.add(fn); fn(state); }
 let seq = 0;
 const hasOverrides = () => Object.keys(state.overrides).length > 0;
 const fail = (e) => { state.error = e instanceof ApiError ? { message: e.message, fix: e.fix } : { message: String(e.message || e), fix: "Refresh the page." }; };
+
+export function notify(message, kind = "ok") {
+  state.notice = message;
+  state.noticeKind = kind;
+  state.noticeAt = Date.now();   // a new message, even when the text repeats (main.js shows it as a toast)
+  emit();
+}
 
 // parts: which pieces to reload
 export async function refresh(parts = { plan: true, week: true, dish: true, menu: true }) {
@@ -49,6 +63,32 @@ export async function refresh(parts = { plan: true, week: true, dish: true, menu
   }
 }
 
+// The plans of the next 7 days (from today) and the activity feed: shared by Home, the Service board, Plans and the
+// Calendar, so they always agree. Neither is in the static snapshot; without a server they stay empty.
+export async function loadShared() {
+  const [plans, activity] = await Promise.allSettled([api.get("/plans", { days: 7 }), api.get("/activity", { limit: 25 })]);
+  if (plans.status === "fulfilled") state.plans = plans.value;
+  if (activity.status === "fulfilled") { state.activity = activity.value.events; state.serverVersion = activity.value.version; }
+  emit();
+}
+
+// After anything was saved: reload what every view shows and tell the views that keep their own data.
+export async function synced() {
+  state.dataVersion += 1;
+  await Promise.all([refresh({ plan: true }), loadShared()]);
+}
+
+// Ask the server now and then whether anything was saved elsewhere; reload only when it was.
+const POLL_MS = 15000;
+async function poll() {
+  if (document.hidden) return;
+  try {
+    const { version } = await api.get("/activity/version");
+    if (state.serverVersion && version !== state.serverVersion) { state.serverVersion = version; await synced(); }
+    else state.serverVersion = version;
+  } catch { /* offline or no server: try again later */ }
+}
+
 export async function init() {
   try {
     state.health = await api.get("/health");
@@ -59,7 +99,11 @@ export async function init() {
     emit();
     return;
   }
-  await refresh();
+  await Promise.all([refresh(), loadShared()]);
+  if (!STATIC || REMOTE) {
+    setInterval(poll, POLL_MS);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+  }
 }
 
 export const setSlot = (slot) => { state.slot = slot; state.overrides = {}; state.dishId = null; return refresh(); };
@@ -71,8 +115,28 @@ export const resetOverrides = () => setOverrides({});
 export function setEditing(on) { state.editing = on; if (!on) state.adjusted = {}; emit(); }
 export function setAdjusted(id, qty) { state.adjusted[id] = qty; emit(); }
 
+// Open one plan on the Service board (from Plans, Forecast, Calendar, Home or Rare events).
+export function openPlan(date, slot) {
+  const slotChanged = Boolean(slot) && slot !== state.slot;
+  state.date = date;
+  if (slot) state.slot = slot;
+  state.overrides = {};
+  if (slotChanged) state.dishId = null;
+  location.hash = "service";
+  return refresh(slotChanged ? undefined : { plan: true, menu: true });
+}
+
+// Open Rare events with a day and an event chosen.
+export function openEvent(date, event) {
+  state.eventPreset = { date, event };
+  location.hash = "events";
+  emit();
+}
+
+const DONE = { approve: "ok", send_back: "warn", withdraw: "warn" };
+
+// The decision on the plan open on the Service board, with any quantities the reviewer changed.
 export async function review(decision) {
-  state.notice = "";
   try {
     const adjusted = Object.fromEntries(Object.entries(state.adjusted).filter(([id, q]) => {
       const row = state.plan.dishes.find((d) => d.dish_id === id);
@@ -81,32 +145,46 @@ export async function review(decision) {
     const r = await api.post("/review", { date: state.date, meal_slot: state.slot, decision, scope: state.scope,
       overrides: state.overrides, adjusted_quantities: adjusted });
     state.plan.review = r.review;
-    state.notice = r.message;
-    state.noticeKind = decision === "approve" ? "ok" : "warn";
     state.editing = false;
+    notify(r.message, DONE[decision]);
+    await synced();
   } catch (e) {
-    state.notice = `${e.message} ${e.fix || ""}`.trim();
-    state.noticeKind = "bad";
+    notify(`${e.message} ${e.fix || ""}`.trim(), "bad");
   }
-  state.noticeAt = Date.now();   // a new confirmation, even when the text repeats (main.js shows it as a toast)
-  emit();
 }
 
-export async function ask(question) {
+// The same decision on many plans (items: [{date, meal_slot}]).
+export async function reviewMany(items, decision) {
+  if (!items.length) return null;
+  try {
+    const r = await api.post("/plans/review", { items, decision });
+    notify(r.message, r.done.length ? DONE[decision] : "warn");
+    await synced();
+    return r;
+  } catch (e) {
+    notify(`${e.message} ${e.fix || ""}`.trim(), "bad");
+    return null;
+  }
+}
+
+export async function ask(question, context = {}) {
   const text = question.trim();
   if (!text || state.chatBusy) return;
-  state.chat.push({ role: "user", text });
+  const date = context.date ?? state.date, slot = context.slot ?? state.slot;
+  state.chat.push({ role: "user", text, date, slot });
   state.chatBusy = true;
   emit();
   try {
-    const r = await api.post("/chat", { question: text, date: state.date, meal_slot: state.slot, scope: state.scope, overrides: state.overrides });
+    const r = await api.post("/chat", { question: text, date, meal_slot: slot, scope: state.scope, overrides: context.overrides ?? state.overrides });
     state.chat.push({ role: "bot", text: r.answer, source: r.source, reason: r.fallback_reason || "" });
   } catch (e) {
     const missing = e.status === 404 || e.status === 405;
     state.chat.push({ role: "err", text: missing
-      ? "The copilot is not available on this server. The numbers on this page are not affected."
+      ? "The copilot is not available on this server. The numbers on the other pages are not affected."
       : `${e.message} ${e.fix || ""}`.trim() });
   }
   state.chatBusy = false;
   emit();
 }
+
+export function clearChat() { state.chat = []; emit(); }
