@@ -22,8 +22,29 @@ export const REMOTE = STATIC && new URLSearchParams(location.search).get("remote
   ? (document.querySelector('meta[name="feedforward-api"]')?.content || "").replace(/\/+$/, "")
   : "";
 const REMOTE_TIMEOUT_MS = 90000;   // a sleeping free server can take about a minute to wake
+// A free host restarts after every deploy and sleeps when unused: while it wakes it drops the connection or its proxy
+// answers 502, 503 or 504. Those calls are tried again for about two minutes before the page shows an error.
+const WAKE_WAITS_MS = [2000, 3000, 5000, 8000, 12000, 15000, 20000, 25000, 30000];
+const WAKING = new Set([0, 502, 503, 504]);
+let wakeNotice = 0;
 
 async function fetchApi(base, path, options, asText, unreachable) {
+  if (!base) return fetchOnce(base, path, options, asText, unreachable);
+  for (let i = 0; ; i++) {
+    try {
+      return await fetchOnce(base, path, options, asText, unreachable);
+    } catch (e) {
+      if (!e.waking || i >= WAKE_WAITS_MS.length) throw e;
+      if (Date.now() - wakeNotice > 60000) {
+        wakeNotice = Date.now();
+        import("./fx.js").then(({ toast }) => toast("Waking the FeedForward server. This can take up to a minute; the page carries on by itself.", "warn", 6000));
+      }
+      await new Promise((r) => setTimeout(r, WAKE_WAITS_MS[i]));
+    }
+  }
+}
+
+async function fetchOnce(base, path, options, asText, unreachable) {
   let res;
   const ctrl = new AbortController();
   const timer = base ? setTimeout(() => ctrl.abort(), REMOTE_TIMEOUT_MS) : null;
@@ -31,7 +52,7 @@ async function fetchApi(base, path, options, asText, unreachable) {
     res = await fetch(`${base}/api${path}`, { ...options, signal: ctrl.signal,
       headers: { ...(options.headers || {}), ...(auth.pin ? { "X-Admin-Pin": auth.pin } : {}), ...(auth.token ? { Authorization: `Bearer ${auth.token}` } : {}) } });
   } catch {
-    throw new ApiError(0, ...unreachable);
+    throw Object.assign(new ApiError(0, ...unreachable), { waking: true });
   } finally {
     clearTimeout(timer);
   }
@@ -39,6 +60,9 @@ async function fetchApi(base, path, options, asText, unreachable) {
   const body = await res.json().catch(() => ({}));
   if (res.ok) return body;
   const d = body.detail;
+  if (base && WAKING.has(res.status) && !(d && typeof d === "object")) {   // the host's proxy, not FeedForward, answered
+    throw Object.assign(new ApiError(res.status, ...unreachable), { waking: true });
+  }
   if (d && typeof d === "object" && !Array.isArray(d)) { const e = new ApiError(res.status, d.message, d.fix); e.fields = d.fields; throw e; }
   if (res.status === 404) throw new ApiError(404, "This feature is not available on the server yet.", "Update the server code and restart it.");
   throw new ApiError(res.status, "The server could not answer this request.", "Try again, or check the server window for the error.");
