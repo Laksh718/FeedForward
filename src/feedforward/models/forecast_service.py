@@ -14,6 +14,7 @@ import pandas as pd
 from feedforward import config as C
 from feedforward.data.feature_registry import PHASE_GROUPS
 from feedforward.data.features import WEATHER_TYPE_RAIN_LEVEL, build_features, menu_rows_for
+from feedforward.data.live_weather import version as live_weather_version
 from feedforward.models.baselines import usual_plan
 from feedforward.models.bundle import ModelBundle
 from feedforward.models.metrics import round_portions
@@ -71,6 +72,7 @@ def apply_date_overrides(feats: pd.DataFrame, ov: Overrides) -> pd.DataFrame:
         f["rain_level"] = WEATHER_TYPE_RAIN_LEVEL[ov.weather_type]
     if ov.weather_type is not None or ov.temp_max_c is not None or ov.temp_min_c is not None:
         f["weather_assumed"] = 0  # the admin gave a forecast, so it is no longer last year's average
+        f["weather_source"], f["weather_condition"] = "entered", ov.weather_type
     return f
 
 
@@ -105,9 +107,10 @@ class ForecastService:
             raise ValueError(f"Unknown meal slot '{meal_slot}'. Choose one of {list(C.MEAL_SLOTS)}")
         ov, day = overrides or Overrides(), pd.Timestamp(date).normalize()
         plain = not ov.applied() and dish_ids is None and n_samples == C.N_SAMPLES
+        key = (day, meal_slot, live_weather_version())  # new live weather expires the cached forecasts
         if plain:
             with self._cache_lock:
-                hit = self._cache.get((day, meal_slot))
+                hit = self._cache.get(key)
             if hit is not None:
                 return copy.deepcopy(hit)
         out = self._forecast(day, meal_slot, dish_ids, ov, n_samples)
@@ -115,7 +118,7 @@ class ForecastService:
             with self._cache_lock:
                 if len(self._cache) >= CACHE_SIZE:
                     self._cache.pop(next(iter(self._cache)))
-                self._cache[(day, meal_slot)] = copy.deepcopy(out)
+                self._cache[key] = copy.deepcopy(out)
         return out
 
     def _forecast(self, day: pd.Timestamp, meal_slot: str, dish_ids: list[str] | None, ov: Overrides, n_samples: int) -> dict:
@@ -184,7 +187,9 @@ class ForecastService:
                 "holiday": bool(r["tn_public_holiday"] or r["special_declared_holiday"]), "festival": bool(r["major_festival"]),
                 "students_mostly_away": bool(r["students_mostly_away"]), "temp_max_c": round(float(r["temp_max_c"]), 1),
                 "temp_min_c": round(float(r["temp_min_c"]), 1), "rain_level": int(round(r["rain_level"])),
-                "weather_is_assumed": bool(r["weather_assumed"])}
+                "weather_is_assumed": bool(r["weather_assumed"]),
+                "weather_source": r.get("weather_source") or ("assumed" if r["weather_assumed"] else "recorded"),
+                "weather_condition": r.get("weather_condition") if isinstance(r.get("weather_condition"), str) else None}
 
     def _notes(self, day: pd.Timestamp, rows: list[dict]) -> list[str]:
         """Plain language cautions about how far to trust the numbers."""

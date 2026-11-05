@@ -75,4 +75,7 @@ def overlay_weather(weather: pd.DataFrame) -> pd.DataFrame:
             w.loc[i, "rain_level"], changed = WEATHER_TYPE_RAIN_LEVEL[r["condition"]], True
         if changed:
             w.loc[i, ["weather_assumed", "weather_reliable"]] = [0, 1]
+            if "weather_source" in w.columns:
+                w.loc[i, "weather_source"] = "entered"
+                w.loc[i, "weather_condition"] = r["condition"] if r["condition"] in WEATHER_TYPE_RAIN_LEVEL else None
     return w

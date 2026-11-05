@@ -76,6 +76,8 @@ def _caveats(plan: dict) -> list[str]:
     out = list(plan["notes"][:-1])   # the last note is the generic "history is simulated" line, stated separately
     if plan["day_facts"] and plan["day_facts"]["weather_is_assumed"]:
         out.append("The weather for this date is last year's monthly average, not a forecast.")
+    elif plan["day_facts"] and plan["day_facts"].get("weather_source") == "forecast":
+        out.append("The weather for this date is a live forecast (Open-Meteo), so it can still change.")
     return out
 
 
