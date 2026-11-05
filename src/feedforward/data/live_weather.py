@@ -89,7 +89,7 @@ def fetch(today: date | None = None) -> pd.DataFrame:
     first = pd.Timestamp(C.HISTORY_END).date() + timedelta(days=1)
     base = {"latitude": LATITUDE, "longitude": LONGITUDE, "daily": DAILY, "timezone": TIMEZONE}
     frames = []
-    with httpx.Client(timeout=10.0) as client:
+    with httpx.Client(timeout=6.0) as client:
         r = client.get(FORECAST_URL, params={**base, "past_days": 7, "forecast_days": FORECAST_DAYS})
         r.raise_for_status()
         frames.append(_daily_frame(r.json()))
@@ -123,7 +123,9 @@ def live_weather() -> pd.DataFrame | None:
     if not enabled():
         return None
     with _lock:
-        if _state["frame"] is not None and time.time() - _state["fetched_at"] < TTL_S:
+        # A recent answer stands, including a failed one: without this, a server that cannot reach Open-Meteo and has no
+        # saved copy would try the network again for every forecast it makes (a 7 day plans board makes 28 of them).
+        if _state["fetched_at"] and time.time() - _state["fetched_at"] < TTL_S:
             return _state["frame"]
         try:
             df, ok = fetch(), True

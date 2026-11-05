@@ -26,6 +26,7 @@ from feedforward.admin import automation
 
 APP_DIR = C.PROJECT_ROOT / "app"
 AUTOMATION_FIRST_S, AUTOMATION_EVERY_S = 5, 300
+WARM_FIRST_S, WARM_EVERY_S, WARM_DAYS = 2, 60, 8
 log = logging.getLogger("feedforward.automation")
 
 
@@ -41,12 +42,34 @@ def _automation_loop(stop: threading.Event) -> None:
             log.exception("automatic run failed")
 
 
+def _warm_loop(stop: threading.Event) -> None:
+    """Keep the plain forecasts of today and the next week ready, so the Plans board, the Forecast view and Home open at
+    once even on a slow free server. Cached forecasts cost nothing, so this only does work after a start, a save or a
+    live weather update (each of those starts a fresh cache)."""
+    from datetime import timedelta
+
+    wait = WARM_FIRST_S
+    while not stop.wait(wait):
+        wait = WARM_EVERY_S
+        try:
+            svc, today = _load(), services.today()
+            for i in range(WARM_DAYS):
+                for slot in C.MEAL_SLOTS:
+                    if stop.is_set():
+                        return
+                    svc.forecast(today + timedelta(days=i), slot)
+        except Exception:  # noqa: BLE001  (warming is only a head start; a request still works without it)
+            log.exception("warming the forecasts failed")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Start the background automation with the server and stop it with the server."""
     stop = threading.Event()
     if os.getenv("FEEDFORWARD_AUTOMATION", "on").strip().lower() != "off":
         threading.Thread(target=_automation_loop, args=(stop,), name="automation", daemon=True).start()
+    if os.getenv("FEEDFORWARD_WARM", "on").strip().lower() != "off":
+        threading.Thread(target=_warm_loop, args=(stop,), name="warm-forecasts", daemon=True).start()
     yield
     stop.set()
 

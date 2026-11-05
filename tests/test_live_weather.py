@@ -70,3 +70,25 @@ def test_condition_follows_rain_level():
     assert lw.condition_for(80, 2) == "Rain"
     assert lw.condition_for(95, 2) == "Thunderstorm"
     assert lw.condition_for(2, 0) == "Partly cloudy"
+
+
+def test_unreachable_with_no_saved_copy_is_tried_once_not_for_every_forecast(monkeypatch, tmp_path):
+    """As on a fresh cloud server that cannot reach Open-Meteo: one attempt, then the answer stands for 10 minutes."""
+    import httpx
+
+    calls = []
+
+    def down(today=None):
+        calls.append(1)
+        raise httpx.ConnectError("unreachable")
+    monkeypatch.setenv("FEEDFORWARD_LIVE_WEATHER", "1")
+    monkeypatch.setattr(lw, "CACHE_CSV", tmp_path / "none.csv")
+    monkeypatch.setattr(lw, "fetch", down)
+    monkeypatch.setattr(lw, "_state", {"fetched_at": 0.0, "frame": None, "version": "none"})
+    for _ in range(28):                     # a 7 day plans board asks for the weather version 28 times
+        assert lw.version() == "none"
+        assert lw.weather_rows(pd.DatetimeIndex(["2026-11-10"])).empty
+    assert len(calls) == 1
+    monkeypatch.setattr(lw.time, "time", lambda: lw._state["fetched_at"] + lw.TTL_S + 1)   # after the 10 minute retry window
+    lw.version()
+    assert len(calls) == 2
