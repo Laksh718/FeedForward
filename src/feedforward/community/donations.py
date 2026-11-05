@@ -75,10 +75,14 @@ def _refresh(offer: dict) -> dict:
 
 
 def offers(status: str | None = None, ngo_id: str | None = None) -> list[dict]:
-    """Every offer, newest first, with its remaining portions. ngo_id keeps only that NGO's claims (privacy)."""
+    """Every offer, newest first, with its remaining portions. ngo_id keeps only that NGO's claims (privacy) and leaves
+    out offers the kitchen sent to another NGO."""
     out = []
     for o in _read().values():
         o = _refresh(o)
+        to = o.get("to_ngo")
+        if ngo_id is not None and to and to["id"] != ngo_id:
+            continue
         if ngo_id is not None:
             o = dict(o, claims=[c for c in o["claims"] if c["ngo_id"] == ngo_id])
         if status is None or o["status"] == status:
@@ -87,8 +91,11 @@ def offers(status: str | None = None, ngo_id: str | None = None) -> list[dict]:
 
 
 def create_offer(kitchen: dict, date: str, meal_slot: str, items: list[dict], pickup_until: str | None, location: str,
-                 notes: str = "", handover_hours: float | None = None) -> dict:
-    """A kitchen offers surplus food. items: [{dish_id, dish_name, portions}]; portions above zero only."""
+                 notes: str = "", handover_hours: float | None = None, to_ngo: dict | None = None) -> dict:
+    """A kitchen offers surplus food. items: [{dish_id, dish_name, portions}]; portions above zero only.
+    to_ngo (an approved NGO account) sends the offer to that NGO only; without it every approved NGO sees it."""
+    if to_ngo is not None and (to_ngo.get("role") != "ngo" or to_ngo.get("status") != "active"):
+        raise DonationError("Choose an approved NGO to send the food to.")
     items = [{"dish_id": i.get("dish_id", ""), "dish_name": str(i.get("dish_name", ""))[:80], "portions": int(i["portions"])}
              for i in items if int(i.get("portions") or 0) > 0]
     if not items:
@@ -105,7 +112,9 @@ def create_offer(kitchen: dict, date: str, meal_slot: str, items: list[dict], pi
         data[oid] = {"id": oid, "created_at": _now(), "kitchen_id": kitchen["id"], "kitchen_name": kitchen["org_name"],
                      "contact": kitchen.get("phone", ""), "date": date, "meal_slot": meal_slot, "items": items,
                      "total_portions": sum(i["portions"] for i in items), "pickup_until": until, "location": location.strip()[:200],
-                     "notes": notes.strip()[:500], "handover_hours": hours, "status": "open", "claims": []}
+                     "notes": notes.strip()[:500], "handover_hours": hours, "status": "open", "claims": [],
+                     "to_ngo": {"id": to_ngo["id"], "org_name": to_ngo["org_name"], "area": to_ngo.get("area", ""),
+                                "ngo_type": to_ngo.get("ngo_type")} if to_ngo else None}
         _write(data)
         return _refresh(data[oid])
 
@@ -124,6 +133,8 @@ def claim(offer_id: str, ngo: dict, portions: int, pickup_at: str, note: str = "
         _refresh(o)
         if o["status"] != "open":
             raise DonationError("This offer is no longer open.")
+        if o.get("to_ngo") and o["to_ngo"]["id"] != ngo["id"]:
+            raise DonationError(f"This food was sent to {o['to_ngo']['org_name']}.")
         if not 0 < portions <= o["remaining"]:
             raise DonationError(f"Ask for between 1 and {o['remaining']} portions.")
         if pickup_at > o["pickup_until"]:

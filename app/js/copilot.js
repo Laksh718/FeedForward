@@ -11,6 +11,7 @@ const GROUPS = [
   ["The plan", ["What should we cook?", "Explain the range", "Why is this different from the usual plan?"]],
   ["Dishes and risk", ["Which dishes are at risk of surplus?", "How much rice should we make?"]],
   ["Changes and the week", ["What if it rains?", "What if 15% fewer students come?", "What does an exam week do to demand?", "Summarise the week"]],
+  ["Your documents", ["What does the SOP say about donating surplus food?", "What are the food safety rules for holding hot food?"]],
 ];
 
 const SKELETON = `
@@ -80,7 +81,8 @@ export function mountCopilot(root) {
     setHTML(q("#co-plan"), planCard(s));
     q("#co-chat-sub").textContent = s.date ? `Reading the ${s.slot} plan for ${shortDate(s.date)}.` : "";
     const log = q("#co-log");
-    const html = s.chat.length ? s.chat.map((m) => `<div class="bubble ${m.role}">${m.role === "user" && m.date ? `<span class="ctx">${esc(cap(m.slot))}, ${esc(shortDate(m.date))}</span>` : ""}${esc(m.text)}${sourceNote(m) ? `<span class="src">${sourceNote(m)}</span>` : ""}</div>`).join("") + (s.chatBusy ? TYPING : "")
+    const html = s.chat.length ? s.chat.map((m) => `<div class="bubble ${m.role}">${m.role === "user" && m.date ? `<span class="ctx">${esc(cap(m.slot))}, ${esc(shortDate(m.date))}</span>` : ""}${esc(m.text)}${sourceNote(m) ? `<span class="src">${sourceNote(m)}</span>` : ""}${m.documents?.length && m.source !== "documents"
+        ? `<span class="co-docs">${icon("book")}Your documents: ${m.documents.map((d) => `<span title="${esc(d.text)}">${esc(d.source)}</span>`).join(", ")}</span>` : ""}</div>`).join("") + (s.chatBusy ? TYPING : "")
       : WELCOME;
     if (setHTML(log, html)) {
       [...log.children].slice(s.chat.length ? count : 0).forEach((el) => el.classList.add("fresh"));

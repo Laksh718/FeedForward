@@ -126,7 +126,7 @@ export function mountAdmin(root) {
     auth.pin = pin;
     try {
       const r = await api.post("/admin/login", {});
-      try { sessionStorage.setItem("ffpin", pin); } catch { /* private window: stay unlocked for this page only */ }
+      if (pin) { try { sessionStorage.setItem("ffpin", pin); } catch { /* private window: stay unlocked for this page only */ } }
       S.today = state.health?.today ?? r.today;   // the shared store already holds /health
       $("#ad-gate").hidden = true;
       $("#ad-app").hidden = false;
@@ -460,4 +460,10 @@ export function mountAdmin(root) {
   let saved = "";
   try { saved = sessionStorage.getItem("ffpin") || ""; } catch { /* storage blocked */ }
   if (saved) unlock(saved);
+  // a signed in kitchen account opens the Daily log without the PIN (the server checks the session)
+  let kitchenOpened = false;
+  subscribe((s) => {
+    if (s.user?.role === "kitchen" && !kitchenOpened && $("#ad-app").hidden) { kitchenOpened = true; unlock(""); }
+    if (!s.user) kitchenOpened = false;
+  });
 }

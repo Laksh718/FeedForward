@@ -23,6 +23,8 @@ from datetime import datetime, timedelta
 from feedforward import config as C
 
 ROLES = ("kitchen", "ngo")
+NGO_TYPES = {"food_bank": "Food bank", "shelter": "Night shelter", "children": "Children's home", "elders": "Home for the elderly",
+             "community_kitchen": "Community kitchen", "relief": "Relief group", "other": "Other help group"}
 STATUSES = ("active", "pending", "disabled")
 SESSION_DAYS = 14
 PBKDF2_ROUNDS = 240_000
@@ -79,7 +81,7 @@ def public(user: dict) -> dict:
 
 
 def register(email: str, password: str, name: str, org_name: str, role: str, invite_code: str | None = None,
-             admin_pin: str = "", phone: str = "", area: str = "", capacity: int | None = None) -> dict:
+             admin_pin: str = "", phone: str = "", area: str = "", capacity: int | None = None, ngo_type: str | None = None) -> dict:
     """Create an account. Kitchen accounts need the invite code; NGO accounts start pending."""
     email = email.strip().lower()
     if role not in ROLES:
@@ -103,6 +105,7 @@ def register(email: str, password: str, name: str, org_name: str, role: str, inv
         user = {"id": uid, "email": email, "password": hash_password(password), "name": name.strip()[:80],
                 "org_name": org_name.strip()[:120], "role": role, "status": "active" if role == "kitchen" else "pending",
                 "phone": phone.strip()[:40], "area": area.strip()[:120], "capacity": capacity,
+                "ngo_type": (ngo_type if ngo_type in NGO_TYPES else "other") if role == "ngo" else None,
                 "created_at": datetime.now().isoformat(timespec="seconds"), "approved_by": None}
         accounts[uid] = user
         _write(_accounts_path(), accounts)
@@ -165,3 +168,64 @@ def set_status(account_id: str, status: str, by: dict) -> dict:
         user["approved_by"] = by["org_name"] if status == "active" else user.get("approved_by")
         _write(_accounts_path(), accounts)
     return public(user)
+
+
+DEMO = {
+    "kitchen": {"email": "demo-kitchen@feedforward.demo", "name": "Demo manager", "org_name": "Demo kitchen (Main mess)",
+                "phone": "+91 98400 00001", "area": "Main mess, back gate", "capacity": None},
+    "ngo": {"email": "demo-ngo@feedforward.demo", "name": "Demo volunteer", "org_name": "Annam Food Bank (demo)",
+            "phone": "+91 98400 00002", "area": "Guindy, Chennai", "capacity": 400, "ngo_type": "food_bank"},
+}
+
+# Example NGOs and help groups for the demo (made up names, marked "demo"), so a kitchen has someone to send food to.
+DEMO_NGOS = [
+    ("seva", "Seva Night Shelter (demo)", "shelter", "Saidapet, Chennai", 150),
+    ("nanban", "Nanban Children's Home (demo)", "children", "Velachery, Chennai", 120),
+    ("anbu", "Anbu Elders' Home (demo)", "elders", "Adyar, Chennai", 80),
+    ("ward12", "Ward 12 Community Kitchen (demo)", "community_kitchen", "Kotturpuram, Chennai", 600),
+    ("flood", "Coastal Flood Relief Volunteers (demo)", "relief", "Besant Nagar, Chennai", 1000),
+]
+
+
+def ensure_demo_ngos() -> None:
+    """Create the example NGOs (already approved) the first time; leave them alone afterwards."""
+    with _lock:
+        accounts = _read(_accounts_path())
+        added = False
+        for key, org, kind, area, cap in DEMO_NGOS:
+            uid = f"demo-ngo-{key}"
+            if uid not in accounts:
+                accounts[uid] = {"id": uid, "email": f"{key}@ngo.feedforward.demo", "password": hash_password(secrets.token_urlsafe(24)),
+                                 "name": "Volunteer desk", "org_name": org, "role": "ngo", "status": "active", "phone": "",
+                                 "area": area, "capacity": cap, "ngo_type": kind, "created_at": datetime.now().isoformat(timespec="seconds"),
+                                 "approved_by": "demo", "demo": True}
+                added = True
+        if added:
+            _write(_accounts_path(), accounts)
+
+
+def demo_login(role: str) -> tuple[str, dict]:
+    """Sign in to the shared demo kitchen or demo NGO account, creating it (already approved) the first time.
+    Its password is random and never shown: the only way in is this demo button."""
+    if role not in DEMO:
+        raise AccountError("Choose the demo kitchen or the demo NGO.")
+    d = DEMO[role]
+    with _lock:
+        accounts = _read(_accounts_path())
+        user = next((a for a in accounts.values() if a["email"] == d["email"]), None)
+        if user is None:
+            uid = f"demo-{role}"
+            user = {"id": uid, "email": d["email"], "password": hash_password(secrets.token_urlsafe(24)), "name": d["name"],
+                    "org_name": d["org_name"], "role": role, "status": "active", "phone": d["phone"], "area": d["area"],
+                    "capacity": d["capacity"], "ngo_type": d.get("ngo_type"), "created_at": datetime.now().isoformat(timespec="seconds"), "approved_by": "demo",
+                    "demo": True}
+            accounts[uid] = user
+            _write(_accounts_path(), accounts)
+        elif user["status"] != "active":   # a kitchen may have switched the demo NGO off: the demo always works
+            user["status"] = "active"
+            _write(_accounts_path(), accounts)
+        sessions = _read(_sessions_path())
+        token = secrets.token_urlsafe(32)
+        sessions[token] = {"user_id": user["id"], "expires": (datetime.now() + timedelta(days=1)).isoformat(timespec="seconds")}
+        _write(_sessions_path(), sessions)
+    return token, public(user)

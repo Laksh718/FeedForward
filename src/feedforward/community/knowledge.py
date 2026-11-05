@@ -163,18 +163,44 @@ def _signature() -> tuple:
     return (str(p), p.stat().st_mtime_ns) if p.exists() else (str(p), 0)
 
 
+# Words a kitchen uses for the same thing, so a question finds a passage written with the other word.
+SYNONYMS = {"leftover": "surplus", "leftovers": "surplus", "left": "surplus", "extra": "surplus", "excess": "surplus",
+            "donate": "donation", "donating": "donation", "give": "donation", "ngo": "donation", "charity": "donation",
+            "pickup": "collect", "collection": "collect", "handover": "hand", "store": "keep", "storage": "keep",
+            "fridge": "cold", "refrigerator": "cold", "chiller": "cold", "warm": "hot", "temperature": "hot cold",
+            "quantity": "portion", "quantities": "portion", "amount": "portion", "plates": "portion", "meals": "portion"}
+
+
+def _analyzer():
+    """Lowercase words, English stop words removed, Porter stems (donated, donating, donation -> donat), plus the
+    kitchen synonyms above, then single words and pairs."""
+    from nltk.stem import PorterStemmer
+    from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+    stem = PorterStemmer().stem
+
+    def analyse(text: str) -> list[str]:
+        words = []
+        for w in re.findall(r"[a-z0-9]+", text.lower()):
+            if w in ENGLISH_STOP_WORDS:
+                continue
+            words.append(stem(w))
+            words += [stem(x) for x in SYNONYMS.get(w, "").split()]
+        return words + [f"{a} {b}" for a, b in zip(words, words[1:], strict=False)]
+    return analyse
+
+
 @lru_cache(maxsize=4)
 def _search_index(signature: tuple):
     from sklearn.feature_extraction.text import TfidfVectorizer
     passages = _load(_passages_path(), [])
     if not passages:
         return None, []
-    vec = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), sublinear_tf=True, min_df=1)
+    vec = TfidfVectorizer(analyzer=_analyzer(), sublinear_tf=True, min_df=1)
     matrix = vec.fit_transform([p["text"] for p in passages])
     return (vec, matrix), passages
 
 
-def search(question: str, k: int = 4, min_score: float = 0.06) -> list[dict]:
+def search(question: str, k: int = 4, min_score: float = 0.05) -> list[dict]:
     """The passages that best match the question, best first, each with its document title, page and score."""
     model, passages = _search_index(_signature())
     if model is None or not question.strip():
@@ -200,7 +226,7 @@ RULES = [
     ("hot_holding_c", "Keep hot food at or above", r"(?:hot|holding|reheat)[^.]{0,60}?(?:above|at least|minimum of|over|≥|>=)\s*(\d{2})\s*(?:°|degrees|deg)?\s*C", "°C"),
     ("cold_holding_c", "Keep cold food at or below", r"(?:cold|chill|refrigerat)[^.]{0,60}?(?:below|under|at most|maximum of|≤|<=)\s*(\d{1,2})\s*(?:°|degrees|deg)?\s*C", "°C"),
     ("safety_margin_pct", "Cook a safety margin of", r"(?:buffer|margin|extra)[^.]{0,40}?(\d{1,2})\s*(?:%|percent)", "percent"),
-    ("min_donation_portions", "Smallest donation worth arranging", r"(?:minimum|at least)\s+(\d{2,4})\s*(?:portions|meals|plates)[^.]{0,40}?(?:donat|pick)", "portions"),
+    ("min_donation_portions", "Smallest donation worth arranging", r"(?:minimum(?: of)?|at least)\s+(\d{2,4})\s*(?:portions|meals|plates)[^.]{0,60}?(?:donat|pick)", "portions"),
 ]
 
 
@@ -229,4 +255,4 @@ def rule_value(key: str, default=None):
 
 def summary() -> dict:
     docs = documents()
-    return {"documents": len(docs), "passages": sum(d["passages"] for d in docs), "rules": rules()}
+    return {"document_count": len(docs), "passages": sum(d["passages"] for d in docs), "rules": rules()}

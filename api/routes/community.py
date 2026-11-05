@@ -76,6 +76,7 @@ class RegisterIn(BaseModel):
     phone: str = Field("", max_length=40)
     area: str = Field("", max_length=120)
     capacity: int | None = Field(None, ge=1, le=50000)
+    ngo_type: str | None = Field(None, max_length=40)
 
 
 class LoginIn(BaseModel):
@@ -92,6 +93,32 @@ def register(body: RegisterIn) -> dict:
         raise _bad(exc) from exc
     waiting = " It can request food once a kitchen approves it." if user["status"] == "pending" else ""
     return {"token": token, "user": user, "message": f"Account created for {user['org_name']}.{waiting}"}
+
+
+def demo_enabled() -> bool:
+    """The one click demo accounts are on unless FEEDFORWARD_DEMO=off (switch them off for a real kitchen: the demo
+    kitchen can open the Daily log)."""
+    return os.getenv("FEEDFORWARD_DEMO", "on").strip().lower() != "off"
+
+
+class DemoIn(BaseModel):
+    role: str = Field(pattern="^(kitchen|ngo)$")
+
+
+@router.post("/auth/demo")
+def demo(body: DemoIn) -> dict:
+    """Sign in to the shared demo kitchen or demo NGO, no password needed."""
+    if not demo_enabled():
+        raise error(403, "The demo accounts are switched off on this server.", "Sign in with your own account, or create one.")
+    accounts.ensure_demo_ngos()
+    token, user = accounts.demo_login(body.role)
+    return {"token": token, "user": user, "message": f"Signed in as {user['org_name']}. This is a shared demo account."}
+
+
+@router.get("/auth/options")
+def options() -> dict:
+    """What the sign in page can offer."""
+    return {"demo": demo_enabled(), "ngo_types": accounts.NGO_TYPES}
 
 
 @router.post("/auth/login")
@@ -116,7 +143,9 @@ def me(user: dict | None = Depends(optional_user)) -> dict:
 
 @router.get("/accounts")
 def list_accounts(role: str | None = Query(None, pattern="^(kitchen|ngo)$"), _: dict = Depends(kitchen_user)) -> dict:
-    return {"accounts": accounts.list_accounts(role)}
+    if demo_enabled():
+        accounts.ensure_demo_ngos()
+    return {"accounts": accounts.list_accounts(role), "ngo_types": accounts.NGO_TYPES}
 
 
 class StatusIn(BaseModel):
@@ -213,6 +242,7 @@ class OfferIn(BaseModel):
     pickup_until: str | None = Field(None, max_length=25)
     location: str = Field(max_length=200)
     notes: str = Field("", max_length=500)
+    to_ngo_id: str | None = Field(None, max_length=40)
 
 
 class ClaimIn(BaseModel):
@@ -249,12 +279,17 @@ def suggest(date: Date, slot: Slot, source: str = Query("log", pattern="^(log|pl
         note = "From the Daily log: the portions left over." if len(kit) else "Nothing is logged for this meal yet. Log the day first, or use the expected surplus of the plan."
     else:
         review = latest_review(str(date), slot)
-        if not review or review["decision"] != "approve":
-            return {"items": [], "note": "This plan is not approved, so there is no expected surplus. Approve it first, or use the Daily log."}
-        plan = svc.forecast(date, slot, overrides=Overrides(**review.get("overrides", {})))
+        approved = review and review["decision"] == "approve"
+        plan = svc.forecast(date, slot, overrides=Overrides(**(review.get("overrides", {}) if approved else {})))
         wanted = {d["dish_id"]: d["p50"] for d in plan["dishes"]}
-        items = [{"dish_id": d, "dish_name": names.get(d, d), "portions": int(q - wanted.get(d, q))} for d, q in review["approved"].items()]
-        note = "Expected surplus: the approved quantity minus the most likely demand. Check what is really left before you post."
+        if approved:
+            cooked = review["approved"]
+            note = "Expected surplus: the approved quantity minus the most likely demand. Check what is really left before you post."
+        else:   # not approved yet: what the kitchen cooks anyway (its usual plan, or the recommendation for a new dish)
+            cooked = {d["dish_id"]: d["usual_plan"] or d["recommended"] for d in plan["dishes"]}
+            note = ("This plan is not approved yet, so this is what is left if the kitchen cooks its usual amount: the usual plan "
+                    "minus the most likely demand. Approve the plan for a closer figure.")
+        items = [{"dish_id": d, "dish_name": names.get(d, d), "portions": int(q - wanted.get(d, q))} for d, q in cooked.items()]
     items = sorted([i for i in items if i["portions"] > 0], key=lambda i: -i["portions"])
     return {"items": items, "note": note, "total": sum(i["portions"] for i in items)}
 
@@ -262,11 +297,17 @@ def suggest(date: Date, slot: Slot, source: str = Query("log", pattern="^(log|pl
 @router.post("/donations")
 def create(body: OfferIn, user: dict = Depends(kitchen_user)) -> dict:
     try:
+        to = None
+        if body.to_ngo_id:
+            to = next((a for a in accounts.list_accounts("ngo") if a["id"] == body.to_ngo_id), None)
+            if to is None:
+                raise donations.DonationError("That NGO was not found. Choose another one.")
         offer = donations.create_offer(user, str(body.date), body.meal_slot, body.items, body.pickup_until, body.location,
-                                       body.notes, knowledge.rule_value("handover_hours"))
+                                       body.notes, knowledge.rule_value("handover_hours"), to)
     except (donations.DonationError, KeyError, TypeError, ValueError) as exc:
         raise _bad(exc if isinstance(exc, ValueError) else ValueError("Each dish needs a number of portions.")) from exc
-    return {"offer": offer, "message": f"Offered {offer['total_portions']:,} portions until {offer['pickup_until'].replace('T', ' ')}."}
+    who = f" to {offer['to_ngo']['org_name']}" if offer.get("to_ngo") else " to every approved NGO"
+    return {"offer": offer, "message": f"Sent {offer['total_portions']:,} portions{who}, to collect by {offer['pickup_until'].replace('T', ' ')}."}
 
 
 @router.post("/donations/{offer_id}/claim")

@@ -159,6 +159,30 @@ the automation) shows on all the others within seconds: the page asks the server
   review and save), **Fill the whole day from the approved plans**, removable dish rows, bulk import from CSV, recent entries with edit and
   delete, CSV export and "Forecast versus actual".
 
+**Accounts, documents and donations** (the account button at the top right; Calendar, Daily log, Donations and Documents sit
+under **More** in the top bar):
+
+- **Account**: sign in, or create an account. A *kitchen* account (a mess, hostel or central kitchen) needs the invite code, which is
+  the `ADMIN_PIN`; it opens the Daily log without the PIN, uploads documents and approves NGOs. An *NGO or help group* account
+  (food bank, night shelter, children's home, home for the elderly, community kitchen, relief group) can register any time and asks
+  for food once a kitchen has approved it. An NGO account sees only **Food offers** and its account: the planning views are the
+  kitchen's. **Try as a demo kitchen** and **Try as a demo NGO** sign in to shared demo accounts with one click, and five example
+  NGOs (made up names, marked "demo") are there to send food to. Set `FEEDFORWARD_DEMO=off` for a real kitchen. Passwords are
+  stored as salted PBKDF2 hashes; a session lasts 14 days.
+- **Documents** (retrieval augmented generation): upload SOPs, food safety rules, donation policies or menus (PDF, Word .docx, text,
+  Markdown or CSV). Each file is cut into passages and searched with TF-IDF over stemmed words and kitchen synonyms (no outside
+  service, the same question always finds the same passages). **Ask your documents** answers from the best passages (worded by the
+  language model when one is set up, which may only use those passages; otherwise the passage itself) and shows them with their
+  page. The copilot puts matching passages next to the forecast figures and lists them under its answer; a question about the
+  SOP, a rule or a policy is answered from the documents. **Rules found** lists the hand over time for surplus food, hot and cold
+  holding temperatures, safety margin and smallest donation, each with the sentence it came from; Donations uses them.
+- **Donations**: a kitchen fills an offer from the Daily log leftovers, or from the plan's expected surplus (approved quantity, or
+  the usual plan when not approved yet, minus the most likely demand), edits it, and sends it to every approved NGO or to one NGO
+  picked from the directory. The collection deadline comes from the documents' hand over rule (2 hours if none). NGOs ask for
+  portions with a pickup time; the kitchen accepts, declines or marks the food collected. **Rare events** shows how much food the
+  normal plan would leave over on an event day, with **Offer this surplus to NGOs**. Offers, requests and collections show in the
+  activity feed of every view.
+
 **Automation** (Daily log, both switches off until an admin turns them on; the server checks every 5 minutes, **Run now** does it at once):
 
 - *Approve plans automatically*: every plan from today to N days ahead (1 to 14) that nobody has reviewed is approved with the recommended
@@ -192,6 +216,10 @@ Click a day in a chart to see that day. "Main dishes" are the dishes the CVAE fo
 | POST /api/chat | one explanation: answer, source (llm, template or rules), intent, figures used |
 | GET /api/dishes, /api/ingredients | catalogues |
 | GET /api/calendar?month=YYYY-MM | one month of the academic calendar, cross-checked against a live public holiday calendar |
+| /api/auth/... | register, login, logout, me, demo (one click demo kitchen or NGO), options |
+| /api/accounts, /api/accounts/{id}/status | a kitchen lists accounts and approves or switches off NGOs |
+| /api/knowledge, /upload, /{id} (DELETE), /search, /ask | the document library: upload (base64 JSON), search passages, answer from them, rules found |
+| /api/donations, /suggest, /{id}/claim, /{id}/claims/{cid}, /{id}/cancel | offers of surplus food, suggestions from the log or the plan, requests, accept, collected |
 | /api/admin/... (header `X-Admin-Pin`) | menu, validate, day (save), recent, entry (soft delete), export, import (bulk CSV), fill-recipes, plan-fill, automation (GET, POST, run), forecast-vs-actual, summary |
 
 Errors always say what happened and how to fix it. CORS is closed unless `CORS_ORIGINS` is set.
