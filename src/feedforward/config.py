@@ -51,7 +51,7 @@ VAE_LR, VAE_WEIGHT_DECAY, VAE_BATCH = 1e-3, 1e-5, 256
 VAE_EPOCHS, VAE_ANNEAL_EPOCHS, VAE_PATIENCE = 200, 20, 15
 VAE_FREE_BITS = 0.2         # nats per latent dimension that cost nothing (guards against posterior collapse)
 N_SAMPLES = 500
-EXTRA_DATA_WEIGHT = 0.5     # weight of synthetic rows from the GAN (teammate)
+EXTRA_DATA_WEIGHT = 0.3     # weight of synthetic rows from the GAN (real rows weigh 1)
 RECOMMEND_QUANTILE = 0.75   # cook the P75 by default
 COVERAGE_TARGET = 0.80      # the P10 to P90 band should contain about 80 percent of outcomes
 

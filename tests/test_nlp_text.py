@@ -44,6 +44,8 @@ def test_stopword_removal_keeps_negation():
 
 def test_stemmer_makes_non_words_lemmatiser_does_not():
     assert T.stem_porter("gravy") == "gravi"
+    if not T.has("wordnet"):
+        pytest.skip("NLTK WordNet data is missing. Download it with: python -m nltk.downloader -d artifacts/nltk_data punkt_tab wordnet averaged_perceptron_tagger_eng stopwords")
     assert T.lemmatize("fries") == "fry"
 
 

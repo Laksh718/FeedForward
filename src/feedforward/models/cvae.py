@@ -19,6 +19,7 @@ embedding (a table of 8 numbers per dish) is LEARNED by the network from data. T
 21 day history on its own (--encoder gru) instead of relying only on the hand made lag features.
 """
 
+import random
 from dataclasses import dataclass
 
 import numpy as np
@@ -28,6 +29,13 @@ from torch import nn
 from feedforward import config as C
 
 LOGVAR_MIN, LOGVAR_MAX = -8.0, 4.0  # keeps the variances numerically safe
+
+
+def set_seed(seed: int = C.SEED) -> None:
+    """Fix python, numpy and torch randomness. Call it BEFORE the model is built (its starting weights are random)."""
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 
 @dataclass
@@ -138,8 +146,7 @@ def train_cvae(model: CVAE, make_train, val: dict | None, fixed_epochs: int | No
     caller can add fresh weather forecast noise each epoch. With fixed_epochs (final retrain, no validation
     set) it trains exactly that many epochs.
     """
-    cfg = model.cfg
-    torch.manual_seed(C.SEED)
+    cfg = model.cfg  # the seed was set by the caller before the model was built (see set_seed)
     opt = torch.optim.Adam(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
     hist = {"train_loss": [], "val_loss": [], "train_recon": [], "train_kl": [], "val_kl": [], "beta": [],
             "val_kl_dim": []}

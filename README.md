@@ -27,7 +27,7 @@ FeedForward/
   Datasets/FEEDFORWARD DATASETS/    read only input data (never edited)
   src/feedforward/
     config.py                       paths, constants, seeds (single source of truth)
-    export_code.py                  bundles the data code into docs/code_bundle_preprocessing.md
+    export_code.py                  bundles the data code into artifacts/code_bundle_preprocessing.md
     data/
       schemas.py loaders.py profile.py            load and validate every file
       nlp_text.py nlp_entities.py nlp_report.py   text pipeline, rule based NER, normalisation report
@@ -43,7 +43,7 @@ FeedForward/
       forecast_service.py week_view.py            forecast(...) entry point, 7 day view
     copilot/                        nlu, context_builder, prompts, llm, templates, explain, compare_prompts
     admin/                          schemas, store (LogStore, CsvLogStore), context, history, validation, compare, review_log
-    plugins/                        surplus_detector_stub.py, gan_extra_data.py   (teammates plug in here)
+    plugins/                        surplus_detector_stub.py (interface), gan_extra_data.py (GAN rows: generate, check, write)
   api/                              FastAPI: main.py, deps.py, schemas.py, services.py, routes/
   app/                              dashboard: index.html, css/, js/ (Home, Service board, Forecast desk, Calendar, Daily log)
   scripts/                          build_static_site.py, deploy_pages.sh (the GitHub Pages online demo)
@@ -56,14 +56,20 @@ FeedForward/
 
 ## Run it yourself
 
+**Python:** 3.11 or newer is required (`pyproject.toml`). What was actually verified: Python 3.14.0 on Windows with torch 2.12.0 (CPU),
+pandas 2.3.3, scikit-learn 1.8.0 and fastapi 0.143.0. The full test suite, the API and the browser test all ran on that set.
+A clean Python 3.12 virtual environment installed the packages, but torch could not be imported on the test PC (a DLL error, probably a missing
+Visual C++ runtime), so 3.12 is not verified. The README steps below were not re-run on a fresh clone; the model and processed tables are committed,
+so the server can start straight after the install steps even before the pipeline is rebuilt.
+
 Windows (PowerShell):
 
 ```powershell
-py -3.12 -m venv .venv
+py -3.14 -m venv .venv                # or another Python 3.11+ that has CPU torch wheels
 .\.venv\Scripts\Activate.ps1
 pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 pip install -e .
-Copy-Item .env.example .env        # then edit .env: GEMINI_API_KEY, ADMIN_PIN
+Copy-Item .env.example .env        # then edit .env: GROQ_API_KEY (optional), ADMIN_PIN
 ```
 
 macOS or Linux:
@@ -73,15 +79,27 @@ python3 -m venv .venv_mac
 source .venv_mac/bin/activate
 pip install -r requirements.txt
 pip install -e .
-cp .env.example .env               # then edit .env: GEMINI_API_KEY, ADMIN_PIN
+cp .env.example .env               # then edit .env: GROQ_API_KEY (optional), ADMIN_PIN
 ```
 
-Then run the pipeline steps below once (they build `artifacts/`) and start the server with `uvicorn api.main:app --reload`.
+NLTK data (needed by the text pipeline and one test; run once, it needs internet):
 
-`.env` keys: `GEMINI_API_KEY` (optional, from [Google AI Studio](https://aistudio.google.com/apikey): without it the copilot uses standard
-wording), `GEMINI_MODEL` (default `gemini-3.1-flash-lite`) and `GEMINI_FALLBACK_MODELS` (tried in turn when that model is slow, busy or
-unavailable, because Gemini's speed swings with demand), `ADMIN_PIN` (needed for the Daily log).
-`GROQ_API_KEY` and `GROQ_MODEL` still work as an alternative and are used only when there is no Gemini key. Secrets stay in `.env`; it is never committed.
+```bash
+python -m nltk.downloader -d artifacts/nltk_data punkt_tab wordnet averaged_perceptron_tagger_eng stopwords
+```
+
+Build the data and models once (the table below has the detail), then start the API and open http://127.0.0.1:8000/:
+
+```bash
+python -m feedforward.data.preprocess && python -m feedforward.data.cleaning && python -m feedforward.data.calendar_future
+python -m feedforward.data.timeseries && python -m feedforward.data.inventory_features
+python -m feedforward.models.train && python -m feedforward.models.train --final
+uvicorn api.main:app --reload
+```
+
+`.env` keys: `GROQ_API_KEY` and `GROQ_MODEL` (default `openai/gpt-oss-20b`; key from [Groq](https://console.groq.com)) for the copilot's
+language model, one request per answer. Without a key the copilot uses standard wording. `GEMINI_API_KEY` and `GEMINI_MODEL` are an optional
+fallback, used only when there is no Groq key. `ADMIN_PIN` is needed for the Daily log. Secrets stay in `.env`; it is never committed.
 
 ## How to run each part (from the project folder, venv active)
 
@@ -98,12 +116,12 @@ unavailable, because Gemini's speed swings with demand), `ADMIN_PIN` (needed for
 | Evaluate | `python -m feedforward.models.evaluate` | `reports/metrics.json`, `metrics_summary.md`, PNG plots |
 | Train the deployed model | `python -m feedforward.models.train --final` | `artifacts/models/final` (train plus validation) |
 | Optional GRU experiment | `python -m feedforward.models.train --encoder gru` | `artifacts/models/dev_gru` |
-| Learn from real entries | `python -m feedforward.models.train --include-admin`, then `--final --include-admin` | uses the Daily log rows, warns below 28 real days |
+| Learn from real entries | `python -m feedforward.models.train --include-admin`, then `--final --include-admin` | uses the Daily log rows; refuses with fewer than 28 real days unless you add `--force` |
 | Prompt comparison (needs a key) | `python -m feedforward.copilot.compare_prompts` | `reports/prompt_comparison.md` |
 | Start the API and dashboard | `uvicorn api.main:app --reload` | http://127.0.0.1:8000/ (API docs at `/docs`) |
-| Tests | `pytest` | 120 plus tests |
+| Tests | `pytest -q` | 162 tests: 161 pass and 1 is skipped when NLTK WordNet data is missing (see the NLTK data step above) |
 | Browser test | `node tests/ui_smoke.mjs` (Node 22, Edge, server on port 8765 with `ADMIN_PIN=1234` and a temp `FEEDFORWARD_ADMIN_LOG_DIR`) | PASS or FAIL per interaction |
-| Bundle the data code into one document | `python -m feedforward.export_code` | `docs/code_bundle_preprocessing.md` |
+| Bundle the data code into one document | `python -m feedforward.export_code` | `artifacts/code_bundle_preprocessing.md` |
 
 The tests need the processed data and the final model: run the preprocessing steps and the two training commands once after a fresh clone.
 
@@ -127,7 +145,7 @@ the screen; the arrow keys move between the tabs).
   paste a CSV shaped like its export, preview it, then import; a bad row is skipped and listed, the rest of the file still goes in), recent
   entries with edit and delete, CSV export and "Forecast versus actual".
 
-The look is one small design system in `app/css/base.css` (glass surfaces over a slowly drifting background, a sliding pill under every
+The look is one small design system in `app/css/base.css` (main colours: ink #0D2A1E, brand green #12855A, usual plan red #C8432A, page background #E8F3ED) (glass surfaces over a slowly drifting background, a sliding pill under every
 segmented control, numbers that roll to their new value, charts that draw in when their data changes); the motion helpers live in
 `app/js/fx.js`, the logo in `app/js/logo.js` and the icons in `app/js/icons.js`. Everything respects the system's reduce motion setting.
 
@@ -139,7 +157,7 @@ Click a day in a chart to see that day. "Main dishes" are the dishes the CVAE fo
 |---|---|
 | GET /api/health | status, project today, default plan date, data source chip |
 | GET /api/plan?date=&slot=&scope= | per dish range, recommended, usual plan, surplus risk, headline sentences |
-| GET /api/week?slot=&start=&dish_id= | 7 forecast days plus the 7 days before as actuals |
+| GET /api/week?slot=&start=&dish_id= | 7 forecast days plus the last 7 days with actuals before the start |
 | POST /api/whatif | plan with changes next to the unchanged plan |
 | POST /api/review, GET /api/review | Approve or Send back with a forecast snapshot; latest decision |
 | POST /api/chat | one explanation: answer, source (llm, template or rules), intent, figures used |
@@ -165,7 +183,7 @@ full feature set while the server is up, and falls back to the snapshot's behavi
 | Service board, Forecast desk | every date from 2025-10-06 to 2027-01-31, every slot, main dishes and all dishes, the week chart per dish | other weeks |
 | Calendar | every month, as cross-checked against the live holiday calendar when the snapshot was built | |
 | What if | one setting at a time for the 7 days from the project's tomorrow | combined settings, any date |
-| Copilot | if the server is down: the suggested questions for those 7 days, in the template wording | every question, answered by Gemini |
+| Copilot | if the server is down: the suggested questions for those 7 days, in the template wording | every question, answered by the language model |
 | Approve, Send back | if the server is down: saved in the visitor's own browser only | saved in the server's review log |
 | Daily log | off when there is no server | the full Daily log, behind the PIN |
 
@@ -200,7 +218,7 @@ the Daily log), deploy the repository as a container. The `Dockerfile` installs 
 3. Render reads `render.yaml` (a free Docker web service, health check on `/api/health`, redeploy on every push to `main`) and asks for:
    - `ADMIN_PIN`: a long random PIN, not 1234 (anyone with the link can reach the Daily log page). Until it is set, the Daily log is off.
    - `CORS_ORIGINS` is filled in from `render.yaml` (`https://laksh718.github.io`), so the GitHub Pages site can call the server.
-   - `GEMINI_API_KEY`: optional. Use a separate key for this deployment, because every visitor's copilot question uses it. Without a key
+   - `GROQ_API_KEY`: optional. Use a separate key for this deployment, because every visitor's copilot question uses it. Without a key
      the copilot answers in its template wording.
 4. Apply. The first build takes several minutes (torch); the app is then served at the `*.onrender.com` address Render shows.
 
@@ -236,11 +254,28 @@ open http://localhost:8000.
 `docs/concept_map.md` (concept, slide topic, where it is used, why it fits, and what does not apply), `docs/pipeline.md`,
 `docs/data_dictionary.md`, `docs/objectives_map.md`, `docs/prompt_scenarios.md`, `docs/decisions.md` and the reports folder.
 
+## Rare event GAN
+
+Objective 2: a conditional WGAN-GP learns what demand looks like on rare days (festival, public holiday, exam week, heavy rain) from the
+**train period only**, and produces extra synthetic rows. A validator filters them (not below zero, not above 1.3 times the dish's largest real
+demand, within the plausible demand per attendee for the dish category, not a copy of a real row). The rows are labelled (`synthetic = 1`,
+`source = gan`), down weighted (default 0.3, real rows weigh 1) and never used for validation, calibration or testing.
+**Real data is the only truth: in the ablation (`reports/gan_ablation.md`) the GAN rows did not improve the forecasts, so the deployed model does not use them.**
+
+```bash
+python -m feedforward.data.gan_data                                     # training table and scaler (artifacts/gan/)
+python -m feedforward.models.train_gan --epochs 600 --seed 42           # train the GAN (about 5 minutes on CPU)
+python -m feedforward.plugins.gan_extra_data --generate --out artifacts/gan/extra_rows.csv   # make, check and write rows; writes reports/gan_report.md
+python -m feedforward.models.train --extra-data artifacts/gan/extra_rows.csv --extra-weight 0.3   # CVAE with the rows (dev run)
+python reports/gan_ablation.py                                          # CVAE with and without GAN rows, 3 seeds (about 50 minutes) -> reports/gan_ablation.md
+```
+
+Files: `data/gan_data.py` (table, scaler), `models/gan.py` (generator, critic, losses), `models/train_gan.py`, `plugins/gan_extra_data.py`,
+`models/gan_report.py`, `reports/gan_report.md`, `reports/gan/` (histograms), `reports/gan_ablation.md`. Outputs in `artifacts/gan/` are not committed.
+
 ## Where each teammate plugs in
 
-- **GAN rare event generator:** write synthetic rows with the columns of `artifacts/timeseries/panel.parquet` plus `expected_attendance`
-  and run `python -m feedforward.models.train --extra-data FILE`. `plugins/gan_extra_data.py` validates them; they are down weighted
-  (`EXTRA_DATA_WEIGHT`) and never used for validation, calibration or testing.
+- **GAN rare event generator:** built, see [Rare event GAN](#rare-event-gan). `plugins/gan_extra_data.py` makes, checks and writes the rows that `train.py --extra-data` reads.
 - **Surplus and anomaly detector:** `ForecastService` uses `models/surplus_detector.InventoryAwareSurplusDetector` by default, combining
   the usual plan versus forecast range (demand risk) with days to expiry, stock cover and kilograms expiring soon per dish and date from
   `artifacts/timeseries/inventory_features.parquet` (inventory risk); the higher of the two wins. Swap it for another implementation of

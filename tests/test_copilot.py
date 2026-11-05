@@ -165,9 +165,11 @@ def test_groq_still_works_when_it_is_the_only_key(svc, monkeypatch):
     assert r["source"] == "llm" and "api.groq.com" in str(seen[0].url)
 
 
-def test_gemini_is_preferred_and_odd_replies_fall_back(monkeypatch):
+def test_groq_is_first_gemini_is_the_fallback_and_odd_replies_fail(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "g")
     monkeypatch.setenv("GROQ_API_KEY", "q")
+    assert llm.provider() == "groq"
+    monkeypatch.setenv("GROQ_API_KEY", "")
     assert llm.provider() == "gemini"
     blocked = httpx.MockTransport(lambda r: httpx.Response(200, json={"candidates": [], "promptFeedback": {"blockReason": "SAFETY"}}))
     with pytest.raises(llm.LLMUnavailable):
@@ -227,42 +229,7 @@ def test_no_forbidden_words_anywhere_in_the_project():
     assert not bad, bad
 
 
-def test_gemini_slow_or_busy_model_hands_over_to_the_next(monkeypatch):
-    monkeypatch.setenv("GEMINI_API_KEY", "g")
-    monkeypatch.setenv("GEMINI_MODEL", "first-model")
-    monkeypatch.setenv("GEMINI_FALLBACK_MODELS", "second-model, third-model")
-    assert llm.gemini_models() == ["first-model", "second-model", "third-model"]
-    tried = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        model = request.url.path.split("/")[-1].split(":")[0]
-        tried.append(model)
-        if model == "first-model":
-            return httpx.Response(503, json={"error": {"message": "high demand"}})
-        if model == "second-model":
-            raise httpx.ReadTimeout("slow")
-        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": "From the third."}]}}]})
-    assert llm.complete([{"role": "user", "content": "hi"}], httpx.MockTransport(handler)) == "From the third."
-    assert tried == ["first-model", "second-model", "third-model"]
-
-
-def test_gemini_refused_key_is_not_retried(monkeypatch):
-    monkeypatch.setenv("GEMINI_API_KEY", "bad")
-    monkeypatch.delenv("GEMINI_FALLBACK_MODELS", raising=False)
-    tried = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        tried.append(request.url.path)
-        return httpx.Response(403, json={"error": {"message": "API key not valid"}})
-    with pytest.raises(llm.LLMUnavailable):
-        llm.complete([{"role": "user", "content": "hi"}], httpx.MockTransport(handler))
-    assert len(tried) == 1
-
-
-def test_gemini_fallbacks_can_be_switched_off(monkeypatch):
-    monkeypatch.setenv("GEMINI_MODEL", "")
-    monkeypatch.setenv("GEMINI_FALLBACK_MODELS", "")
-    assert llm.gemini_models() == [llm.GEMINI_DEFAULT_MODEL]
 
 
 def test_quoting_the_wide_range_rule_is_not_an_invented_figure():
@@ -293,18 +260,31 @@ def test_new_rules_keep_other_questions_out(keys, question):
     assert understand(question, keys).intent == "out_of_scope"
 
 
-def test_gemini_a_slow_model_is_raced_by_the_next(monkeypatch):
-    import time as _time
-    monkeypatch.setenv("GEMINI_API_KEY", "g")
-    monkeypatch.setenv("GEMINI_MODEL", "slow-model")
-    monkeypatch.setenv("GEMINI_FALLBACK_MODELS", "quick-model")
-    monkeypatch.setattr(llm, "HEDGE_AFTER_S", 0.2)
+GOOD = ("Short answer: The usual plan is 3,199 and we suggest cooking 3,430.\nKey drivers:\n- Last week 2,793 were wanted.\n"
+        "One caution: The likely range is 2,621 to 3,713.")
+BAD = "Short answer: Cook 7,777 portions.\nKey drivers:\n- x\nOne caution: y"
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        model = request.url.path.split("/")[-1].split(":")[0]
-        if model == "slow-model":
-            _time.sleep(1.5)
-        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": f"From {model}."}]}}]})
-    started = _time.monotonic()
-    assert llm.complete([{"role": "user", "content": "hi"}], httpx.MockTransport(handler)) == "From quick-model."
-    assert _time.monotonic() - started < 1.2
+
+@pytest.mark.parametrize("provider", ["groq", "gemini"])
+def test_exactly_one_request_per_answer(svc, monkeypatch, provider):
+    seen = []
+    r = _ask(svc, _model(GOOD, seen=seen), monkeypatch, provider=provider)
+    assert r["source"] == "llm" and len(seen) == 1
+    assert ("api.groq.com" in str(seen[0].url)) == (provider == "groq")
+    if provider == "groq":
+        body = json.loads(seen[0].content)
+        assert body["model"] == "openai/gpt-oss-20b" and body["reasoning_effort"] == "low"
+
+
+def test_a_failed_request_is_not_retried_and_the_template_is_used(svc, monkeypatch):
+    seen = []
+    busy = httpx.MockTransport(lambda request: (seen.append(request), httpx.Response(503, json={}))[1])
+    r = _ask(svc, busy, monkeypatch, provider="groq")
+    assert len(seen) == 1 and r["source"] == "template" and "could not be reached" in r["fallback_reason"]
+
+
+def test_a_bad_number_in_the_answer_is_rejected_after_one_request(svc, monkeypatch):
+    seen = []
+    r = _ask(svc, _model(BAD, seen=seen), monkeypatch, provider="groq")
+    assert len(seen) == 1 and r["source"] == "template" and "7,777" not in r["answer"]
+    assert r["answer"].startswith("Short answer:") and "not in the data" in r["fallback_reason"]

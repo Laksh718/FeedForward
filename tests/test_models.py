@@ -113,3 +113,46 @@ def test_overrides_and_errors(service):
         service.forecast("2026-10-07", "brunch")
     with pytest.raises(ValueError):
         service.forecast("2026-10-07", "lunch", overrides=Overrides(weather_type="Snow"))
+
+
+def test_two_short_trainings_with_the_same_seed_give_identical_losses():
+    from feedforward.models.train import fit_bundle, load_panel
+    panel = load_panel()
+    small = panel[panel["date"] <= "2026-03-15"].copy()      # a small slice, trained for 2 epochs
+    mask = small["split"] == "train"
+    losses = []
+    for _ in range(2):
+        _, hist, _ = fit_bundle(small, mask, None, CVAEConfig(), fixed_epochs=2, log=False, seed=11)
+        losses.append(hist["train_loss"])
+    assert len(losses[0]) == 2 and losses[0] == losses[1]
+
+
+def test_inventory_detector_levels_and_the_higher_of_two_rule():
+    from feedforward.models.surplus_detector import InventoryAwareSurplusDetector
+    d = InventoryAwareSurplusDetector()
+    # demand risk alone (usual plan, most likely, high end)
+    assert d.assess(400, 390, 450) == "low" and d.assess(500, 400, 550) == "medium" and d.assess(600, 470, 550) == "high"
+    # inventory risk alone (demand is fine)
+    assert d.assess(400, 390, 450, min_days_to_expiry=9, stock_cover_days=5, kg_expiring_within_3_days=0) == "low"
+    assert d.assess(400, 390, 450, min_days_to_expiry=3, stock_cover_days=5, kg_expiring_within_3_days=20) == "medium"
+    assert d.assess(400, 390, 450, min_days_to_expiry=1, stock_cover_days=5, kg_expiring_within_3_days=0) == "high"
+    assert d.assess(400, 390, 450, min_days_to_expiry=9, stock_cover_days=0.5, kg_expiring_within_3_days=0) == "high"
+    # the higher of the two wins, in both directions
+    assert d.assess(500, 400, 550, min_days_to_expiry=1) == "high"                                    # demand medium, inventory high
+    assert d.assess(600, 470, 550, min_days_to_expiry=9, stock_cover_days=9, kg_expiring_within_3_days=0) == "high"  # demand high, inventory low
+    assert d.assess(500, 400, 550, min_days_to_expiry=3, kg_expiring_within_3_days=20) == "medium"   # both medium
+
+
+def test_missing_inventory_data_uses_demand_risk_only():
+    from feedforward.models.surplus_detector import InventoryAwareSurplusDetector
+    d = InventoryAwareSurplusDetector()
+    assert d.assess(400, 390, 450, min_days_to_expiry=None, stock_cover_days=None, kg_expiring_within_3_days=None) == "low"
+    assert d.assess(600, 470, 550) == "high" and d.assess(500, 400, 550) == "medium"
+    assert d.assess(0, 100, 200) == "low"                                                            # no usual plan
+
+
+@pytest.mark.skipif(not FINAL_READY, reason="run: python -m feedforward.models.train --final")
+def test_plan_says_whether_stock_data_was_used(service):
+    inside = service.forecast(C.HISTORY_END, "lunch", n_samples=50)
+    after = service.forecast("2026-10-07", "lunch", n_samples=50)
+    assert inside["inventory_risk_available"] is True and after["inventory_risk_available"] is False
