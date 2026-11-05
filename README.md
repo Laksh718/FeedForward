@@ -69,7 +69,7 @@ py -3.14 -m venv .venv                # or another Python 3.11+ that has CPU tor
 .\.venv\Scripts\Activate.ps1
 pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 pip install -e .
-Copy-Item .env.example .env        # then edit .env: GROQ_API_KEY (optional), ADMIN_PIN
+Copy-Item .env.example .env        # then edit .env: GEMINI_API_KEY (optional), ADMIN_PIN
 ```
 
 macOS or Linux:
@@ -79,7 +79,7 @@ python3 -m venv .venv_mac
 source .venv_mac/bin/activate
 pip install -r requirements.txt
 pip install -e .
-cp .env.example .env               # then edit .env: GROQ_API_KEY (optional), ADMIN_PIN
+cp .env.example .env               # then edit .env: GEMINI_API_KEY (optional), ADMIN_PIN
 ```
 
 NLTK data (needed by the text pipeline and one test; run once, it needs internet):
@@ -97,9 +97,8 @@ python -m feedforward.models.train && python -m feedforward.models.train --final
 uvicorn api.main:app --reload
 ```
 
-`.env` keys: `GROQ_API_KEY` and `GROQ_MODEL` (default `openai/gpt-oss-20b`; key from [Groq](https://console.groq.com)) for the copilot's
-language model, one request per answer. Without a key the copilot uses standard wording. `GEMINI_API_KEY` and `GEMINI_MODEL` are an optional
-fallback, used only when there is no Groq key. `ADMIN_PIN` is needed for the Daily log. Secrets stay in `.env`; it is never committed.
+`.env` keys: `GEMINI_API_KEY` and `GEMINI_MODEL` (default `gemini-3.1-flash-lite`; key from [Google AI Studio](https://aistudio.google.com/apikey))
+for the copilot's language model, one request per answer. Without a key the copilot uses standard wording. `ADMIN_PIN` is needed for the Daily log. Secrets stay in `.env`; it is never committed.
 
 ## How to run each part (from the project folder, venv active)
 
@@ -218,7 +217,7 @@ the Daily log), deploy the repository as a container. The `Dockerfile` installs 
 3. Render reads `render.yaml` (a free Docker web service, health check on `/api/health`, redeploy on every push to `main`) and asks for:
    - `ADMIN_PIN`: a long random PIN, not 1234 (anyone with the link can reach the Daily log page). Until it is set, the Daily log is off.
    - `CORS_ORIGINS` is filled in from `render.yaml` (`https://laksh718.github.io`), so the GitHub Pages site can call the server.
-   - `GROQ_API_KEY`: optional. Use a separate key for this deployment, because every visitor's copilot question uses it. Without a key
+   - `GEMINI_API_KEY`: optional. Use a separate key for this deployment, because every visitor's copilot question uses it. Without a key
      the copilot answers in its template wording.
 4. Apply. The first build takes several minutes (torch); the app is then served at the `*.onrender.com` address Render shows.
 

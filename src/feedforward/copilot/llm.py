@@ -1,8 +1,7 @@
 """One request to a hosted language model over HTTP per answer. It only turns figures into words.
 
-Groq (openai/gpt-oss-20b) is used when GROQ_API_KEY is set; Gemini is the fallback when there is no Groq key
-(GEMINI_API_KEY). Keys are read from .env (or the host's environment) and are never printed or logged. Exactly one
-request is sent per answer: no retries and no second model. If there is no key, no internet or the service fails,
+Google Gemini only (GEMINI_API_KEY, model GEMINI_MODEL). The key is read from .env (or the host's environment) and is
+never printed or logged. Exactly one request is sent per answer: no retries and no second model. If there is no key, no internet or the service fails,
 LLMUnavailable is raised and the caller uses the template answer instead.
 """
 
@@ -16,15 +15,10 @@ from feedforward import config as C
 load_dotenv(C.PROJECT_ROOT / ".env")
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 GEMINI_DEFAULT_MODEL = "gemini-3.1-flash-lite"   # change with GEMINI_MODEL
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_DEFAULT_MODEL = "openai/gpt-oss-20b"   # change with GROQ_MODEL; check the name in your Groq console
-TEMPERATURE = 0.2                           # low, so the same question gives nearly the same answer
-MAX_TOKENS = 500                            # answers are short by design
-GEMINI_THINKING_TOKENS = 2048               # newer Gemini models think first, and that counts against the output limit
-TIMEOUT_S = 20.0                            # one request
-
-# Kept for callers and scripts that used the Groq only names.
-DEFAULT_MODEL = GROQ_DEFAULT_MODEL
+TEMPERATURE = 0.2                                # low, so the same question gives nearly the same answer
+MAX_TOKENS = 500                                 # answers are short by design
+GEMINI_THINKING_TOKENS = 2048                    # newer Gemini models think first, and that counts against the output limit
+TIMEOUT_S = 20.0                                 # one request
 
 
 class LLMUnavailable(RuntimeError):
@@ -35,18 +29,9 @@ def _key(name: str) -> str:
     return os.getenv(name, "").strip()
 
 
-def provider() -> str | None:
-    """Which service a request would use: "groq", then "gemini", or None when no key is set."""
-    if _key("GROQ_API_KEY"):
-        return "groq"
-    if _key("GEMINI_API_KEY"):
-        return "gemini"
-    return None
-
-
 def is_configured() -> bool:
-    """True when a key is present (it may still fail at call time)."""
-    return provider() is not None
+    """True when GEMINI_API_KEY is set (the request may still fail at call time)."""
+    return bool(_key("GEMINI_API_KEY"))
 
 
 def _gemini_body(messages: list[dict], model: str) -> dict:
@@ -82,17 +67,10 @@ def _gemini(messages: list[dict], client: httpx.Client) -> str:
 
 def complete(messages: list[dict], transport: httpx.BaseTransport | None = None) -> str:
     """Send the messages and return the reply text. `transport` is for tests only."""
-    which = provider()
-    if which is None:
-        raise LLMUnavailable("neither GROQ_API_KEY nor GEMINI_API_KEY is set in .env")
+    if not is_configured():
+        raise LLMUnavailable("GEMINI_API_KEY is not set in .env")
     try:
         with httpx.Client(timeout=TIMEOUT_S, transport=transport) as client:
-            if which == "gemini":
-                return _gemini(messages, client)
-            body = {"model": _key("GROQ_MODEL") or GROQ_DEFAULT_MODEL, "messages": messages,
-                    "temperature": TEMPERATURE, "max_tokens": MAX_TOKENS, "reasoning_effort": "low"}
-            r = client.post(GROQ_URL, json=body, headers={"Authorization": f"Bearer {_key('GROQ_API_KEY')}"})
-            r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"].strip()
+            return _gemini(messages, client)
     except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as exc:
         raise LLMUnavailable(f"the language model could not be reached ({type(exc).__name__})") from exc
