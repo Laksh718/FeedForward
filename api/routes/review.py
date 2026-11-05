@@ -1,4 +1,4 @@
-"""POST /api/review (the human decision) and GET /api/review (its status)."""
+"""POST /api/review (the human decision: approve, send back or withdraw) and GET /api/review (its status)."""
 
 from datetime import date as Date
 
@@ -11,6 +11,8 @@ from feedforward.admin.review_log import append_review, latest_review
 from feedforward.models.forecast_service import ForecastService
 
 router = APIRouter()
+MESSAGES = {"approve": "Plan approved and saved.", "send_back": "Plan sent back and saved.",
+            "withdraw": "Decision withdrawn. The plan is waiting for a review again."}
 
 
 @router.post("/review")
@@ -23,7 +25,7 @@ def review(body: ReviewIn, svc: ForecastService = Depends(get_service)) -> dict:
         raise ValueError(f"These dishes are not on the menu for that slot: {sorted(unknown)}")
     rows = append_review(plan, body.decision, body.reviewer, body.note, svc.bundle.info, body.adjusted_quantities)
     return {"stored_rows": rows, "review": latest_review(plan["date"], body.meal_slot),
-            "message": "Plan approved and saved." if body.decision == "approve" else "Plan sent back and saved."}
+            "message": MESSAGES[body.decision]}
 
 
 @router.get("/review")

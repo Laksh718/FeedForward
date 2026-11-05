@@ -1,4 +1,5 @@
 // Small helpers shared by every view.
+import { icon } from "./icons.js";
 
 export const fmt = (n) => Math.round(n).toLocaleString("en-US");
 export const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -71,3 +72,36 @@ export function sourceNote(m) {
   if (m.reason.includes("not set")) return "Standard wording from the figures on this page (no language model key on this server).";
   return SOURCE_NOTE.template;
 }
+
+// ---------- plan status, shown the same way on every view
+
+export function reviewStatus(r) {
+  if (!r) return { key: "pending", label: "Waiting for review", short: "Waiting", icon: "clock" };
+  if (r.decision === "approve") {
+    return r.automatic ? { key: "approve", label: "Approved automatically", short: "Auto approved", icon: "auto" }
+      : { key: "approve", label: "Approved", short: "Approved", icon: "check" };
+  }
+  return { key: "send_back", label: "Sent back", short: "Sent back", icon: "back" };
+}
+
+export const statusPill = (r, short = false) => {
+  const s = reviewStatus(r);
+  return `<span class="status-pill ${s.key}">${icon(s.icon)}${short ? s.short : s.label}</span>`;
+};
+
+// What kind of plan was approved: a rare event plan, a what if, or the plain forecast.
+export function planKind(r) {
+  if (!r) return "";
+  if (r.note && r.note.startsWith("Rare event plan:")) return r.note.replace("Rare event plan: ", "").replace(/\.$/, "") + " plan";
+  if (r.overrides && Object.keys(r.overrides).length) return "What if plan";
+  return "";
+}
+
+// "5 Nov, 21:03" from an ISO timestamp.
+export const whenText = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${d.toLocaleDateString("en-US", { day: "numeric", month: "short" })}, ${d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+};
+
+export const SLOT_ICON = { breakfast: "sun", lunch: "service", snacks: "leaf", dinner: "star" };

@@ -2,7 +2,8 @@
 
 A database can replace CsvLogStore later without touching the API or the form: implement the same methods.
 Column names mirror the dataset tables so the logs can be appended to the history. Every row also carries
-data_source (admin_real), entered_at, entered_by and deleted (soft delete).
+data_source, entered_at, entered_by and deleted (soft delete). data_source is admin_real for what a person entered
+and auto_filled for a day the automation filled from its approved plan; only admin_real rows are learned from.
 """
 
 import threading
@@ -16,6 +17,7 @@ from feedforward import config as C
 from feedforward.admin.schemas import DaySaveIn
 
 DATA_SOURCE = "admin_real"
+AUTO_SOURCE = "auto_filled"      # filled from the approved plan by feedforward.admin.automation
 META = ["data_source", "entered_at", "entered_by", "deleted"]
 TABLES: dict[str, dict] = {
     "day_context": {"key": ["date"], "columns": [
@@ -33,7 +35,7 @@ class LogStore(ABC):
     """What the API needs from any storage."""
 
     @abstractmethod
-    def save_day(self, entry: DaySaveIn) -> dict[str, int]:
+    def save_day(self, entry: DaySaveIn, source: str = DATA_SOURCE) -> dict[str, int]:
         """Insert or update the rows of one date. Returns how many rows were written per table."""
 
     @abstractmethod
@@ -88,8 +90,8 @@ class CsvLogStore(LogStore):
         merged.sort_values(key).to_csv(self._path(table), index=False, encoding="utf-8")
         return len(rows)
 
-    def save_day(self, entry: DaySaveIn) -> dict[str, int]:
-        meta = {"data_source": DATA_SOURCE, "entered_at": datetime.now().isoformat(timespec="seconds"),
+    def save_day(self, entry: DaySaveIn, source: str = DATA_SOURCE) -> dict[str, int]:
+        meta = {"data_source": source, "entered_at": datetime.now().isoformat(timespec="seconds"),
                 "entered_by": entry.entered_by or "", "deleted": 0}
         d, dow = str(entry.date), entry.date.strftime("%A")
         base = {"date": d, "day_of_week": dow, **meta}

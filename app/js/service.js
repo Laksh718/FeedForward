@@ -1,14 +1,14 @@
 // View: Service board. The plan for one meal on one day: the headline and the numbers that matter, the day's
-// context, dish by dish tickets, the week chart, what if and the copilot.
+// context, dish by dish tickets to change, the decision (approve, send back, withdraw), the week chart and what if.
+// On the side: this meal's plans for the next days and what happened lately, so the board always shows where
+// things stand. Questions about the plan go to the Copilot view.
 import { bindChart, chartService } from "./charts.js";
 import { liquid, replay, rollNumber, setHTML } from "./fx.js";
 import { icon } from "./icons.js";
-import { logoMark } from "./logo.js";
-import { ask, review, setAdjusted, setDate, setEditing, setScope, setSlot, state, subscribe } from "./state.js";
-import { SLOTS, cap, esc, fmt, isoDay, parseDay, riskLabel, shortDate, sourceNote, weekdayName } from "./util.js";
+import { feedItem } from "./plans.js";
+import { review, setAdjusted, setDate, setEditing, setScope, setSlot, state, subscribe } from "./state.js";
+import { SLOTS, cap, esc, fmt, isoDay, parseDay, planKind, reviewStatus, riskLabel, shortDate, statusPill, weekdayName, whenText } from "./util.js";
 import { mountWhatIf } from "./whatif.js";
-
-const CHIPS = ["Explain the range", "What if it rains?", "Summarise the week"];
 
 const SKELETON = `
   <header class="sv-top">
@@ -36,8 +36,10 @@ const SKELETON = `
     </div>
     <div class="sv-kpis" id="sv-kpis"></div>
     <div class="sv-actions">
-      <button class="btn btn-primary" id="sv-approve" type="button">${icon("check")}Approve this plan</button>
+      <button class="btn btn-primary" id="sv-approve" type="button">${icon("check")}<span id="sv-approve-t">Approve this plan</span></button>
       <button class="btn" id="sv-change" type="button" aria-pressed="false">${icon("edit")}<span id="sv-change-t">Change quantities</span></button>
+      <button class="btn btn-danger" id="sv-back" type="button">${icon("back")}Send back</button>
+      <button class="btn" id="sv-withdraw" type="button" hidden>${icon("close")}Withdraw decision</button>
       <p class="sv-status" id="sv-status" aria-live="polite"></p>
     </div>
   </section>
@@ -66,18 +68,19 @@ const SKELETON = `
         <div id="sv-whatif"></div>
       </section>
     </div>
-    <aside class="copilot glass" aria-labelledby="sv-co-title">
-      <div class="copilot-head"><span class="copilot-avatar">${logoMark({ size: 40 })}</span>
-        <div><h2 id="sv-co-title">Kitchen copilot</h2><p>Explains the numbers on this page. It never changes a quantity.</p></div></div>
-      <div class="chat-log" id="sv-log" aria-live="polite"></div>
-      <div class="chips">${CHIPS.map((c) => `<button type="button" class="chip-btn">${c}</button>`).join("")}</div>
-      <form class="chat-form" id="sv-form"><label class="sr-only" for="sv-q">Ask about a dish or a change</label>
-        <input id="sv-q" autocomplete="off" placeholder="Ask what to cook, or about a dish or a change"><button class="btn btn-primary send-btn" type="submit" aria-label="Send">${icon("send")}</button></form>
+    <aside class="sv-side">
+      <section class="sv-side-card glass" aria-labelledby="sv-wk-t">
+        <h2 id="sv-wk-t">${icon("plans")}<span id="sv-wk-title">This meal, next days</span></h2>
+        <ul class="sv-wk" id="sv-wk"></ul>
+        <a class="btn btn-small" href="#plans">${icon("plans")}All plans</a>
+      </section>
+      <section class="sv-side-card glass" aria-labelledby="sv-act-t">
+        <h2 id="sv-act-t">${icon("clock")}Latest activity</h2><ul class="feed" id="sv-feed"></ul>
+        <a class="btn btn-small" href="#copilot">${icon("copilot")}Ask the copilot about this plan</a>
+      </section>
     </aside>
   </div>`;
 
-const WELCOME = `<div class="bubble bot">Ask what to cook, how much of a dish to make, why a dish is above or below the usual plan, or what a change would do. I only use the numbers on this page.</div>`;
-const TYPING = `<div class="bubble bot typing" role="status" aria-label="The copilot is writing"><i></i><i></i><i></i></div>`;
 const RAIN = ["Dry", "Light rain", "Rain", "Heavy rain"];
 const DIET_LABEL = { veg: "Veg", nonveg: "Non-veg", egg: "Egg" };
 const CATEGORY_LABEL = (c) => c.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
@@ -160,6 +163,9 @@ export function mountService(root) {
 
   root.querySelectorAll("[data-slot]").forEach((b) => b.addEventListener("click", () => setSlot(b.dataset.slot)));
   q("#sv-approve").addEventListener("click", () => review("approve"));
+  q("#sv-back").addEventListener("click", () => review("send_back"));
+  q("#sv-withdraw").addEventListener("click", () => review("withdraw"));
+  q("#sv-wk").addEventListener("click", (e) => { const b = e.target.closest("[data-date]"); if (b && b.dataset.date !== state.date) setDate(b.dataset.date); });
   q("#sv-change").addEventListener("click", () => setEditing(!state.editing));
   q("#sv-showall").addEventListener("click", () => setScope(state.scope === "core" ? "all" : "core"));
   q("#sv-tickets").addEventListener("input", (e) => {
@@ -183,9 +189,6 @@ export function mountService(root) {
     foodFilter.diet = b.dataset.diet;
     rerender();
   });
-  const send = (text) => { ask(text); q("#sv-q").value = ""; };
-  q("#sv-form").addEventListener("submit", (e) => { e.preventDefault(); send(q("#sv-q").value); });
-  root.querySelectorAll(".chip-btn").forEach((b) => b.addEventListener("click", () => send(b.textContent)));
 
   function renderFilterBar(s) {
     const meta = Object.fromEntries(s.menu.map((m) => [m.dish_id, m]));
@@ -207,7 +210,7 @@ export function mountService(root) {
   }
 
   const shownQty = new Map();     // dish id -> the number last shown, so a change rolls to its new value
-  let shownTotal = null, ticketsKey = "", chartFor = null, chatCount = 0;
+  let shownTotal = null, ticketsKey = "", chartFor = null;
 
   function render(s) {
     lastState = s;
@@ -285,10 +288,15 @@ export function mountService(root) {
     setHTML(btn, `${icon("list")}${all ? "Show main dishes only" : `Show all dishes (${hidden} more)`}`);
     q("#sv-change").setAttribute("aria-pressed", String(s.editing));
     setText(q("#sv-change-t"), s.editing ? "Done changing" : "Change quantities");
-    const r = p?.review;
-    setText(q("#sv-status"), s.notice || (r ? `${r.decision === "approve" ? "Approved" : "Sent back"} on ${r.reviewed_at.replace("T", " at ")}.` : ""));
-    setHTML(q("#sv-review"), r ? `<span class="status-pill ${r.decision}">${icon(r.decision === "approve" ? "check" : "back")}${r.decision === "approve" ? "Approved" : "Sent back"}</span>` : "");
-    q("#sv-approve").disabled = !p || !p.dishes.length;
+    const r = p?.review, st = reviewStatus(r), kind = planKind(r);
+    const approvedNote = r?.decision === "approve" && r.approved_total != null
+      ? ` ${fmt(r.approved_total)} portions of the main dishes approved${r.edited_dishes ? `, ${r.edited_dishes} quantit${r.edited_dishes === 1 ? "y" : "ies"} changed by hand` : ""}.` : "";
+    setText(q("#sv-status"), r ? `${st.label} ${whenText(r.reviewed_at)}${r.reviewer && !r.automatic ? ` by ${r.reviewer}` : ""}.${approvedNote}${kind ? ` ${kind}.` : ""}` : "Nobody has decided on this plan yet.");
+    setHTML(q("#sv-review"), r ? statusPill(r) + (kind ? `<span class="sv-chip">${esc(kind)}</span>` : "") : statusPill(null));
+    const noDishes = !p || !p.dishes.length;
+    q("#sv-approve").disabled = q("#sv-back").disabled = noDishes;
+    setText(q("#sv-approve-t"), r?.decision === "approve" ? "Approve again" : "Approve this plan");
+    q("#sv-withdraw").hidden = !r;
 
     setText(q("#sv-week-title"), `${cap(s.slot)} demand this week`);
     setText(q("#sv-week-sub"), s.scope === "all" ? "Total portions across all dishes" : "Total portions across the main dishes");
@@ -300,14 +308,17 @@ export function mountService(root) {
       chartFor = { week: s.week, date: s.date };
     }
 
-    const log = q("#sv-log");
-    const html = s.chat.length ? s.chat.map((m) => `<div class="bubble ${m.role}">${esc(m.text)}${sourceNote(m) ? `<span class="src">${sourceNote(m)}</span>` : ""}</div>`).join("") + (s.chatBusy ? TYPING : "")
-      : WELCOME;
-    if (setHTML(log, html)) {
-      [...log.children].slice(s.chat.length ? chatCount : 0).forEach((el) => el.classList.add("fresh"));
-      chatCount = s.chat.length;
-      log.scrollTo({ top: log.scrollHeight, behavior: "smooth" });
-    }
+    // this meal over the next days (the shared plans list) and the latest activity
+    setText(q("#sv-wk-title"), `${cap(s.slot)}, next days`);
+    const days = s.plans?.days ?? [];
+    setHTML(q("#sv-wk"), days.length ? days.map((d) => {
+      const sl = d.slots.find((x) => x.meal_slot === s.slot);
+      if (!sl?.has_menu) return `<li class="sv-wk-off"><span>${esc(shortDate(d.date))}</span><span>No menu</span></li>`;
+      const rv = sl.review, total = rv?.decision === "approve" ? rv.approved_total : sl.totals.recommended;
+      return `<li><button type="button" class="sv-wk-row ${d.date === s.date ? "on" : ""}" data-date="${d.date}"><span class="sv-wk-day">${esc(shortDate(d.date))}${d.is_today ? " <small>today</small>" : ""}</span>
+        <span class="sv-wk-n num">${fmt(total)}</span>${statusPill(rv, true)}</button></li>`;
+    }).join("") : `<li class="feed-empty">The plans of the next days appear here.</li>`);
+    setHTML(q("#sv-feed"), s.activity.length ? s.activity.slice(0, 6).map(feedItem).join("") : `<li class="feed-empty">No decisions or log entries yet.</li>`);
   }
 
   subscribe(render);

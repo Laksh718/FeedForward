@@ -1,5 +1,6 @@
 """Real entries as history rows (same columns as kitchen_history.csv) and the combined history used for forecasting
-and retraining. The data_source column keeps simulated and real rows apart."""
+and retraining. The data_source column keeps simulated and real rows apart. Days the automation filled from the
+approved plan (auto_filled) are left out until a person checks and saves them: they hold the plan, not what happened."""
 
 import pandas as pd
 
@@ -14,6 +15,7 @@ def admin_history_rows(store: LogStore | None = None) -> tuple[pd.DataFrame, int
     """Real kitchen rows in the history format. Returns (rows, number of rows skipped for lack of an attendance number)."""
     store = store or get_store()
     kit, att = store.read("kitchen_log"), store.read("attendance")
+    kit, att = kit[kit["data_source"] == DATA_SOURCE], att[att["data_source"] == DATA_SOURCE]   # not the automatic fills
     if kit.empty:
         return pd.DataFrame(), 0
     dishes = pd.read_parquet(C.PROCESSED_DIR / "dishes.parquet").set_index("dish_id")

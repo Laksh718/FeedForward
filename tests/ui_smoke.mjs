@@ -57,6 +57,7 @@ await ev("document.querySelector('#sv-whatif .whatif-foot button').click()");
 await waitFor("!document.querySelector('#sv-note').textContent.includes('what if')", "what if reset");
 check("A what if reset", true);
 
+await waitFor("!document.querySelector('#view-service').classList.contains('is-loading')", "plan reloaded after the reset");
 await ev("document.querySelector('#sv-change').click()");
 await waitFor("document.querySelector('#sv-tickets input')", "edit inputs");
 await ev("const i = document.querySelector('#sv-tickets input'); i.focus(); i.value = '2000'; i.dispatchEvent(new Event('input', { bubbles: true }))");
@@ -67,30 +68,37 @@ await ev("document.querySelector('#sv-approve').click()");
 await waitFor("document.querySelector('#sv-status').textContent.length > 0", "approve status");
 check("A approve gives a confirmation", true, await ev("document.querySelector('#sv-status').textContent"));
 
-await ev("document.querySelector('#sv-q').value = 'Why is this high?'; document.querySelector('#sv-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))");
-await waitFor("document.querySelector('#sv-log').lastElementChild.textContent.includes('One caution') || document.querySelector('#sv-log .bubble.err')", "chat reply");
-const reply = await ev("document.querySelector('#sv-log').lastElementChild.textContent");
-check("A copilot answers in the three part format", reply.includes("Short answer:") && reply.includes("One caution:"), reply.slice(0, 90));
 
 await ev("document.querySelector('#sv-showall').click()");
 await waitFor("document.querySelectorAll('#sv-tickets .ticket').length > 4", "show all dishes");
 check("A show all dishes", true, `${await ev("document.querySelectorAll('#sv-tickets .ticket').length")} tickets`);
 
-await ev("location.hash = 'desk'");
-await waitFor("document.querySelector('#dk-table tbody tr')", "desk table");
-check("B title", (await ev("document.querySelector('#dk-title').textContent")).includes("forecast, next 7 days"));
-check("B status chip", true, await ev("document.querySelector('#dk-status').textContent"));
-await ev("document.querySelectorAll('#dk-pick button')[1].click()");
-await waitFor("document.querySelector('#dk-pick button[aria-pressed=true]').dataset.dish", "dish selection");
-check("B dish selector", true, await ev("document.querySelector('#dk-pick button[aria-pressed=true]').textContent"));
-for (const nav of ["whatif", "risk", "approvals", "copilot", "forecast"]) {
-  await ev(`document.querySelector('[data-nav=${nav}]').click()`);
-  check(`B nav ${nav}`, await ev(`document.querySelector('[data-nav=${nav}]').getAttribute('aria-current') === 'page'`));
-}
-await ev("document.querySelector('#dk-q').value = 'Why is Tuesday so high?'; document.querySelector('#dk-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))");
-await waitFor("document.querySelector('#dk-answer').textContent.includes('One caution') || document.querySelector('#dk-answer.err')", "desk answer");
-const deskReply = await ev("document.querySelector('#dk-answer').textContent");
-check("B copilot answer area shows an answer", deskReply.includes("Short answer:"), deskReply.slice(0, 90));
+await ev("location.hash = 'forecast'");
+await waitFor("document.querySelectorAll('#fc-days button.fc-day').length === 7 && document.querySelector('#fc-table tbody tr')", "forecast days");
+check("B forecast shows seven day cards and a title", (await ev("document.querySelector('#fc-title').textContent")).includes("next 7 days"));
+await ev("document.querySelectorAll('#fc-days button.fc-day')[2].click()");
+await waitFor("document.querySelectorAll('#fc-days button.fc-day')[2].classList.contains('on')", "day pick");
+check("B picking a day changes the detail", true, await ev("document.querySelector('#fc-detail-t').textContent"));
+await ev("document.querySelectorAll('#fc-pick button')[1].click()");
+await waitFor("document.querySelector('#fc-pick button[aria-pressed=true]').dataset.dish", "dish selection");
+check("B dish selector", true, await ev("document.querySelector('#fc-pick button[aria-pressed=true]').textContent"));
+check("B every dish on every day", await ev("document.querySelectorAll('#fc-matrix tbody tr').length > 3"));
+
+await ev("location.hash = 'plans'");
+await waitFor("document.querySelectorAll('#pl-board [data-act=approve]').length > 0", "plans board");
+await ev("document.querySelector('#pl-board [data-act=approve]').click()");
+await waitFor("document.querySelectorAll('#pl-board .st-approve').length > 0", "plan approved");
+check("P approving on Plans shows on the board", true, await ev("document.querySelector('#pl-stats').textContent.replace(/\\s+/g, ' ')"));
+
+await ev("location.hash = 'events'");
+await waitFor("document.querySelector('#ev-head h2') && document.querySelectorAll('#ev-dishes tbody tr').length > 0", "rare event plan");
+check("E a rare event plan loads", true, await ev("document.querySelector('#ev-head h2').textContent"));
+
+await ev("location.hash = 'copilot'");
+await ev("document.querySelector('#co-q').value = 'Why is this high?'; document.querySelector('#co-form').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))");
+await waitFor("document.querySelector('#co-log').lastElementChild.textContent.includes('One caution') || document.querySelector('#co-log .bubble.err')", "chat reply");
+const reply = await ev("document.querySelector('#co-log').lastElementChild.textContent");
+check("A copilot answers in the three part format", reply.includes("Short answer:") && reply.includes("One caution:"), reply.slice(0, 90));
 
 
 // ---- Daily log (needs the server started with ADMIN_PIN=1234 and FEEDFORWARD_ADMIN_LOG_DIR pointing at a temp folder)
@@ -137,8 +145,8 @@ await ev("document.querySelector('[data-export=attendance]').click()");
 const bad = await ev("document.querySelector('#ad-s6') && [...document.querySelectorAll('#view-admin button, #view-admin select, #view-admin input:not([type=checkbox])')].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 43.5).map((e) => (e.id || e.textContent.slice(0, 14)) + ':' + Math.round(e.getBoundingClientRect().height)).join(' | ')");
 check("C every visible control is at least 44px tall", bad === "", bad);
 
-await ev("location.hash = 'desk'");
-const small = await ev("[...document.querySelectorAll('#view-desk button, #view-desk select, #view-desk input:not([type=range])')].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 43.5).map((e) => (e.id || e.textContent.slice(0, 14)) + ':' + Math.round(e.getBoundingClientRect().height)).join(' | ')");
+await ev("location.hash = 'forecast'");
+const small = await ev("[...document.querySelectorAll('#view-forecast button, #view-forecast select, #view-forecast input:not([type=range])')].filter((e) => e.offsetParent && e.getBoundingClientRect().height < 43.5).map((e) => (e.id || e.textContent.slice(0, 14)) + ':' + Math.round(e.getBoundingClientRect().height)).join(' | ')");
 check("B every visible control is at least 44px tall", small === "", small);
 
 // ---- Home and Calendar
@@ -160,10 +168,10 @@ check("K calendar has the Coming up list", await ev("!!document.querySelector('#
 
 // mobile: false keeps the viewport at 390 px, so content that is too wide shows up as overflow
 await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 900, deviceScaleFactor: 1, mobile: false });
-for (const view of ["landing", "service", "desk", "calendar", "admin"]) {
+for (const view of ["landing", "service", "forecast", "plans", "events", "copilot", "calendar", "admin"]) {
   await ev(`location.hash = '${view}'`);
   await sleep(700);
-  const wide = await ev("[...document.querySelectorAll('#view-" + view + " *')].filter((e) => e.offsetParent && e.getBoundingClientRect().right > 391 && !e.closest('.tablewrap, .ad-tablewrap, svg, .ld-mq-track, .ld-final-orb')).slice(0, 6).map((e) => (e.id || e.className.baseVal || e.className || e.tagName) + ':' + Math.round(e.getBoundingClientRect().right)).join(' | ')");
+  const wide = await ev("[...document.querySelectorAll('#view-" + view + " *')].filter((e) => e.offsetParent && e.getBoundingClientRect().right > 391 && !e.closest('.tablewrap, .ad-tablewrap, svg, .ld-mq-track, .ld-final-orb, .fc-days')).slice(0, 6).map((e) => (e.id || e.className.baseVal || e.className || e.tagName) + ':' + Math.round(e.getBoundingClientRect().right)).join(' | ')");
   check(`phone width: nothing wider than the screen (${view})`, wide === "" && await ev("document.documentElement.scrollWidth <= 391"), wide);
 }
 console.log(results.join("\n"));

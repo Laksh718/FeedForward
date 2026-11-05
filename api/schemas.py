@@ -53,7 +53,7 @@ class ReviewIn(BaseModel):
 
     date: Date
     meal_slot: Slot
-    decision: Literal["approve", "send_back"]
+    decision: Literal["approve", "send_back", "withdraw"]
     scope: Scope = "core"
     reviewer: str | None = Field(None, max_length=80)
     note: str | None = Field(None, max_length=500)

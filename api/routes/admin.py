@@ -7,15 +7,17 @@ from datetime import date as Date
 import pandas as pd
 from fastapi import APIRouter, Depends, Header, Query
 from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel, Field
 
 from api import services
 from api.deps import error, get_service, reload_service
 from feedforward import config as C
-from feedforward.admin import csv_import
+from feedforward.admin import automation, csv_import
 from feedforward.admin.compare import forecast_vs_actual
 from feedforward.admin.history import real_day_count
+from feedforward.admin.review_log import review_index
 from feedforward.admin.schemas import CsvImportIn, DaySaveIn, DeleteIn, RecipeFillIn
-from feedforward.admin.store import TABLES, get_store
+from feedforward.admin.store import AUTO_SOURCE, TABLES, get_store
 from feedforward.admin.validation import check_future, sanity_warnings
 from feedforward.data.features import menu_rows_for
 from feedforward.models import week_view
@@ -39,7 +41,7 @@ def _read(name: str) -> pd.DataFrame:
 
 
 def _records(df: pd.DataFrame) -> list[dict]:
-    return df.drop(columns=["data_source", "deleted"], errors="ignore").to_dict(orient="records")
+    return df.drop(columns=["deleted"], errors="ignore").to_dict(orient="records")
 
 
 @router.post("/login")
@@ -104,13 +106,14 @@ def recent(limit: int = Query(15, ge=1, le=100)) -> dict:
     for table in TABLES:
         df = store.read(table)
         if not df.empty:
-            frames.append(df[["date", "entered_at"]].assign(table=table))
+            frames.append(df[["date", "entered_at", "data_source"]].assign(table=table))
     if not frames:
         return {"days": []}
     allrows = pd.concat(frames)
     out = []
     for d, g in allrows.groupby("date"):
         out.append({"date": d, "weekday": Date.fromisoformat(d).strftime("%A"), "entered_at": g["entered_at"].max(),
+                    "auto_filled": bool((g["data_source"] == AUTO_SOURCE).any()),
                     **{t: int((g["table"] == t).sum()) for t in TABLES}})
     return {"days": sorted(out, key=lambda r: r["entered_at"], reverse=True)[:limit]}
 
@@ -176,3 +179,60 @@ def fill_recipes(body: RecipeFillIn) -> dict:
 def compare() -> dict:
     """Approved forecasts next to the demand that was logged afterwards."""
     return forecast_vs_actual()
+
+
+class AutomationIn(BaseModel):
+    """POST /api/admin/automation: the switches to change (missing ones stay as they are)."""
+
+    auto_approve: bool | None = None
+    auto_log: bool | None = None
+    days_ahead: int | None = Field(None, ge=1, le=automation.MAX_DAYS_AHEAD)
+
+
+@router.get("/automation")
+def automation_status() -> dict:
+    """The automation switches and what the last run did."""
+    return automation.status()
+
+
+@router.post("/automation")
+def automation_save(body: AutomationIn, svc: ForecastService = Depends(get_service)) -> dict:
+    """Change the switches, then run once straight away so the change shows at once."""
+    automation.save_settings(body.model_dump())
+    result = automation.run(svc, services.today())
+    return {"settings": automation.status(), "result": result, "message": _ran(result)}
+
+
+@router.post("/automation/run")
+def automation_run(svc: ForecastService = Depends(get_service)) -> dict:
+    """Run the automation now (it also runs by itself every few minutes while the server is up)."""
+    result = automation.run(svc, services.today())
+    return {"settings": automation.status(), "result": result, "message": _ran(result)}
+
+
+def _ran(result: dict) -> str:
+    if not (result["auto_approve"] or result["auto_log"]):
+        return "Both switches are off, so nothing was done."
+    parts = []
+    if result["auto_approve"]:
+        n = len(result["approved"])
+        parts.append(f"approved {n} plan{'' if n == 1 else 's'}" if n else "found no plan waiting for approval")
+    if result["auto_log"]:
+        n = len(result["logged_dates"])
+        parts.append(f"filled the Daily log for {n} day{'' if n == 1 else 's'}" if n else "found no day to fill")
+    left = len(result["left_for_a_person"])
+    tail = f" {left} plan{' was' if left == 1 else 's were'} sent back by a person and left for a person." if left else ""
+    return f"Automation {' and '.join(parts)}.{tail}"
+
+
+@router.get("/plan-fill")
+def plan_fill(date: Date, svc: ForecastService = Depends(get_service)) -> dict:
+    """A Daily log entry for `date` worked out from its approved plans, for the form to fill in (nothing is saved)."""
+    approvals = {slot: r for (d, slot), r in review_index().items() if d == str(date) and r["decision"] == "approve"}
+    if not approvals:
+        return {"date": str(date), "slots": [], "entry": None,
+                "message": "No plan for this date is approved, so there is nothing to fill from. Approve the plans first."}
+    entry = automation.entry_from_plans(svc, date, approvals)
+    return {"date": str(date), "slots": sorted(approvals, key=list(C.MEAL_SLOTS).index), "entry": entry.model_dump(mode="json"),
+            "message": "Filled from the approved plans: prepared is the approved quantity, eaten is the most likely demand. "
+                       "Change any number to what really happened, then save."}
